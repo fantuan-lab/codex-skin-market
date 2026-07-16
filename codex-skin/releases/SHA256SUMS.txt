@@ -1,2 +1,4 @@
 8a41d06534a39b6bac7c6c3454d50eb14ef3551a377c18c60fb6c0a9a7e0e039  codex-skin/releases/codex-moon-spirit-macos-beta1.zip
 03f21e6ab22b923a5958686f192f5f21bdb53b4486d69611c38dd3c3df2c4c0c  codex-skin/releases/codex-moon-spirit-windows-beta1.zip
+c40fcf9110cf64e87b2d2f1f5d5fd92a5540cf3ddc00e4cb5635d7e4bae48701  codex-skin/releases/codex-bamboo-panda-macos-beta1.zip
+285769eb18ba6321633e3243b8938d1dbd46f52beda230d058c31d5d6f83868d  codex-skin/releases/codex-bamboo-panda-windows-beta1.zip

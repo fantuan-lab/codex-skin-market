@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 const repositoryUrl = "https://github.com/fantuan-lab/codex-skin-market";
-const ogImageUrl = "https://raw.githubusercontent.com/fantuan-lab/codex-skin-market/main/public/og.png";
+const siteUrl = "https://codex-skin-market.liucui19981231.chatgpt.site";
+const ogImageUrl = `${siteUrl}/skins/bamboo-panda-hero.png`;
 
 export const metadata: Metadata = {
-  title: "Codex 皮肤｜月影灵编 macOS / Windows Beta",
-  description: "免费体验第三方 Codex Desktop 互动皮肤，支持 macOS、Windows 与一键恢复。查看源码、下载 Beta 或申请 Relay Provider 合作。",
-  keywords: ["Codex 皮肤", "Codex Desktop", "Codex theme", "macOS", "Windows", "Relay Provider", "API 中转站"],
+  metadataBase: new URL(siteUrl),
+  title: "Codex 皮肤库｜竹影熊猫、月影灵编 macOS / Windows Beta",
+  description: "直接下载竹影熊猫与月影灵编第三方 Codex Desktop 互动皮肤，支持 macOS、Windows、验证与一键恢复。免费公开 Beta，源码可查。",
+  keywords: ["Codex 皮肤", "Codex Desktop", "Codex theme", "竹影熊猫", "月影灵编", "熊猫皮肤", "macOS", "Windows", "Relay Provider", "API 中转站"],
   authors: [{ name: "Codex Skin Lab", url: repositoryUrl }],
   creator: "Codex Skin Lab",
   publisher: "Codex Skin Lab",
@@ -16,15 +18,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "zh_CN",
-    title: "月影灵编｜给 Codex 桌面端换一张会呼吸的脸",
-    description: "macOS 与 Windows 双平台第三方 Codex Desktop 互动皮肤，公开 Beta、源码可查、随时恢复。",
+    url: siteUrl,
+    title: "竹影熊猫｜陪你把今天的项目啃下来",
+    description: "Codex Skin Lab 双平台皮肤库：竹影熊猫与月影灵编，macOS / Windows 直接下载，公开 Beta、源码可查、随时恢复。",
     siteName: "Codex Skin Lab",
-    images: [{ url: ogImageUrl, width: 1200, height: 630, alt: "月影灵编 Codex Desktop 皮肤 Beta" }],
+    images: [{ url: ogImageUrl, width: 1942, height: 809, alt: "竹影熊猫 Codex Desktop 皮肤视觉概念图" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "月影灵编｜Codex Desktop Skin Beta",
-    description: "macOS + Windows，免费 Beta，源码可查，随时恢复。",
+    title: "竹影熊猫｜Codex Desktop Skin Beta",
+    description: "熊猫陪你写代码。macOS + Windows 直接下载，免费公开 Beta，源码可查，随时恢复。",
     images: [ogImageUrl],
   },
   icons: {

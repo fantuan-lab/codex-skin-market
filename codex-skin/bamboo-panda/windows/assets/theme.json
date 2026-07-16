@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "bamboo-panda-2026",
+  "name": "竹影熊猫",
+  "brandSubtitle": "BAMBOO PANDA CODEX SKIN",
+  "tagline": "跟着熊猫一起，把灵感、代码与效率慢慢做好。",
+  "projectPrefix": "今天啃这个 · ",
+  "projectLabel": "🐼  选择项目",
+  "statusText": "PANDA FOCUS +1",
+  "quote": "今天先把项目啃下来",
+  "image": "panda-reference.png",
+  "colors": {
+    "background": "#F7F3E8",
+    "panel": "#FFFDF6",
+    "panelAlt": "#EEF0D7",
+    "accent": "#3F5B2A",
+    "accentAlt": "#6F8C3D",
+    "secondary": "#A8B77B",
+    "highlight": "#C58C45",
+    "text": "#24351D",
+    "muted": "#6F7563",
+    "line": "rgba(72, 97, 48, .24)"
+  }
+}

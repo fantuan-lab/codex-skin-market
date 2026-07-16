@@ -1,5 +1,5 @@
 name: Bug Report / Bug 反馈
-description: Report a reproducible problem with the Moon Spirit Codex skin beta / 反馈月影灵编 Beta 皮肤的可复现问题
+description: Report a reproducible Codex Skin Lab beta problem / 反馈 Codex Skin Lab Beta 皮肤的可复现问题
 title: "[Bug] "
 labels:
   - bug
@@ -53,6 +53,17 @@ body:
       label: Codex 版本 / Codex version
       description: 可在应用的 About/关于页面查看；不要提交账号信息。 / Find this in the app's About screen; do not include account information.
       placeholder: 0.x.x
+    validations:
+      required: true
+
+  - type: dropdown
+    id: skin
+    attributes:
+      label: 皮肤 / Skin
+      options:
+        - 竹影熊猫 / Bamboo Panda
+        - 月影灵编 / Moon Spirit
+        - 其他 / Other
     validations:
       required: true
 

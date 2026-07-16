@@ -47,4 +47,7 @@ next-env.d.ts
 /codex-skin/vendor/
 /codex-skin/moon-spirit/macos/dist/
 /codex-skin/moon-spirit/windows/dist/
+/codex-skin/bamboo-panda/macos/dist/
+/codex-skin/bamboo-panda/windows/dist/
 /codex-skin/releases/*.zip
+/codex-skin/releases/*.zip.sha256
