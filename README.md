@@ -14,7 +14,7 @@
 
 ### 竹影熊猫 Beta 1 · NEW
 
-![竹影熊猫 Codex Desktop 皮肤视觉概念图](./public/skins/bamboo-panda-hero.png)
+![竹影熊猫 Codex Desktop 工作台视觉概念图](./docs/images/bamboo-panda-codex-workspace-preview.jpg)
 
 熊猫、竹影与成都松弛感进入 Codex 工作台。上图为**视觉概念图**，实际效果会随 Codex 版本、系统字体和窗口尺寸略有差异。
 
