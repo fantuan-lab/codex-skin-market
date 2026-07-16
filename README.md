@@ -27,7 +27,7 @@
 
 ### 月影灵编 Beta 1
 
-![月影灵编 Codex Desktop 皮肤](./public/skins/moon-spirit-hero.png)
+![月影灵编 Codex Desktop 工作台视觉概念图](./docs/images/moon-spirit-codex-workspace-preview.png)
 
 | 平台 | 直接下载安装包 | 当前验证状态 |
 | --- | --- | --- |
