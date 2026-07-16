@@ -1,0 +1,460 @@
+:root.codex-dream-skin {
+  color-scheme: light !important;
+  --dream-ink: #29295c;
+  --dream-purple: var(--moon-accent, #5349bd);
+  --dream-violet: var(--moon-accent-alt, #8377f2);
+  --dream-pink: var(--moon-secondary, #6bdcff);
+  --dream-blush: #f4f3ff;
+  --dream-pearl: rgba(249, 249, 255, .94);
+  --dream-line: rgba(104, 96, 206, .38);
+}
+
+html.codex-dream-skin body {
+  background:
+    radial-gradient(circle at 78% 2%, rgba(130, 220, 255, .42), transparent 25%),
+    radial-gradient(circle at 24% 12%, rgba(177, 165, 255, .50), transparent 28%),
+    linear-gradient(135deg, #fbfbff 0%, #f2f1ff 48%, #e9ecff 100%) !important;
+  color: var(--dream-ink) !important;
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif !important;
+}
+
+html.codex-dream-skin body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .34;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,.98) 0 1px, transparent 2px),
+    radial-gradient(circle, rgba(101,122,255,.72) 0 1px, transparent 2px);
+  background-position: 0 0, 23px 31px;
+  background-size: 53px 53px, 67px 67px;
+}
+
+html.codex-dream-skin aside.app-shell-left-panel {
+  background:
+    linear-gradient(180deg, rgba(250,250,255,.98), rgba(237,238,255,.96)) !important;
+  border: 1px solid rgba(121, 116, 207, .38) !important;
+  border-left: 0 !important;
+  border-radius: 0 20px 20px 0 !important;
+  box-shadow: 10px 0 32px rgba(54, 55, 135, .12), inset -1px 0 rgba(255,255,255,.9) !important;
+  backdrop-filter: none !important;
+  color: var(--dream-ink) !important;
+}
+
+html.codex-dream-skin aside.app-shell-left-panel nav {
+  background: transparent !important;
+}
+
+html.codex-dream-skin aside.app-shell-left-panel button {
+  color: #303064 !important;
+  transition: transform .16s ease, background .16s ease, box-shadow .16s ease !important;
+}
+
+html.codex-dream-skin aside.app-shell-left-panel button:hover {
+  background: linear-gradient(90deg, rgba(212,235,255,.76), rgba(215,209,255,.66)) !important;
+  box-shadow: inset 0 0 0 1px rgba(91,92,192,.20) !important;
+  transform: translateX(1px);
+}
+
+html.codex-dream-skin aside.app-shell-left-panel button[aria-label^="切换模式"] {
+  background: transparent !important;
+  border-color: transparent !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: #5046b6 !important;
+  text-shadow: 0 2px 10px rgba(90,115,255,.24);
+}
+
+html.codex-dream-skin aside.app-shell-left-panel button[aria-label^="切换模式"]::after {
+  content: "✦";
+  margin-left: 2px;
+  color: #50c8ec;
+}
+
+html.codex-dream-skin aside.app-shell-left-panel [class~="bg-token-list-hover-background"],
+html.codex-dream-skin aside.app-shell-left-panel [aria-current="page"] {
+  background: linear-gradient(90deg, rgba(211,207,255,.82), rgba(202,235,255,.72)) !important;
+  border: 1px solid rgba(94,91,188,.28) !important;
+  box-shadow: 0 4px 16px rgba(55,56,135,.12) !important;
+}
+
+html.codex-dream-skin main.main-surface {
+  background:
+    radial-gradient(circle at 84% 10%, rgba(113,207,255,.30), transparent 30%),
+    radial-gradient(circle at 20% 0%, rgba(166,157,255,.26), transparent 26%),
+    linear-gradient(180deg, #fafaff 0%, #f2f3ff 100%) !important;
+  border: 1px solid rgba(122, 118, 207, .38) !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-radius: 20px 0 0 0 !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.95), -8px 0 30px rgba(49,53,132,.10) !important;
+  overflow: hidden !important;
+}
+
+html.codex-dream-skin main.main-surface > header.app-header-tint {
+  background:
+    linear-gradient(90deg, rgba(250,250,255,.96), rgba(226,231,255,.86), rgba(211,207,255,.80)) !important;
+  border-bottom: 1px solid rgba(113,111,200,.30) !important;
+  backdrop-filter: none !important;
+}
+
+#codex-dream-skin-chrome {
+  position: fixed;
+  z-index: 31;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 20px 0 0 0;
+}
+
+.dream-brand {
+  position: absolute;
+  left: 25px;
+  top: 3px;
+  height: 40px;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  color: #433ca0;
+  text-shadow: 0 1px 0 white;
+}
+
+#codex-dream-skin-chrome.dream-home-shell .dream-brand { display: flex; }
+.dream-brand .dream-note { font-size: 29px; color: var(--moon-secondary, #56ccec); filter: drop-shadow(0 2px 5px rgba(89,111,255,.34)); }
+.dream-brand b { display: block; font-size: 15px; letter-spacing: .04em; }
+.dream-brand small { display: block; margin-top: 1px; color: #6b65b8; font-size: 10px; letter-spacing: .05em; }
+
+.dream-signature {
+  position: absolute;
+  right: 92px;
+  top: 6px;
+  display: none;
+  color: var(--moon-accent, #6158cd);
+  font: italic 20px/1.2 "Segoe Script", "Comic Sans MS", cursive;
+  text-shadow: 0 0 8px white, 0 2px 8px rgba(57,73,173,.24);
+  transform: rotate(-3deg);
+}
+#codex-dream-skin-chrome.dream-home-shell .dream-signature { display: block; }
+
+.dream-sparkles { position: absolute; inset: 48px 0 0; opacity: .72; }
+.dream-sparkles i { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: white; box-shadow: 0 0 10px 3px rgba(97,193,255,.64); }
+.dream-sparkles i::before, .dream-sparkles i::after { content: ""; position: absolute; left: 2px; top: -6px; width: 1px; height: 17px; background: linear-gradient(transparent, rgba(255,255,255,.95), transparent); }
+.dream-sparkles i::after { transform: rotate(90deg); }
+.dream-sparkles i:nth-child(1) { left: 7%; top: 11%; }
+.dream-sparkles i:nth-child(2) { left: 31%; top: 5%; opacity: .55; }
+.dream-sparkles i:nth-child(3) { left: 55%; top: 17%; opacity: .82; }
+.dream-sparkles i:nth-child(4) { left: 78%; top: 8%; opacity: .64; }
+.dream-sparkles i:nth-child(5) { left: 92%; top: 27%; opacity: .9; }
+.dream-sparkles i:nth-child(6) { left: 66%; top: 66%; opacity: .48; }
+
+.dream-polaroid {
+  position: absolute;
+  right: 11px;
+  bottom: 74px;
+  width: 116px;
+  height: 150px;
+  display: none;
+  background-image: var(--dream-art);
+  background-size: cover;
+  background-position: 78% center;
+  border: 7px solid rgba(255,253,253,.96);
+  border-bottom-width: 20px;
+  box-shadow: 0 9px 20px rgba(41,42,103,.24), 0 0 0 1px rgba(103,99,180,.28);
+  transform: rotate(-7deg);
+  border-radius: 2px;
+}
+#codex-dream-skin-chrome.dream-home-shell .dream-polaroid { display: block; }
+.dream-polaroid::before { content: "☾"; position: absolute; left: -18px; top: -24px; font-size: 30px; color: #6f65db; filter: drop-shadow(0 3px 4px rgba(42,52,137,.28)); }
+
+.dream-ribbon {
+  position: absolute;
+  left: 50%;
+  bottom: 68px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  color: #5147bb;
+  font-size: 30px;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 4px 5px rgba(58,61,151,.26));
+}
+#codex-dream-skin-chrome.dream-home-shell .dream-ribbon { display: flex; }
+.dream-ribbon span { font-size: 15px; color: #56c9ef; }
+
+html.codex-dream-skin [role="main"] {
+  background: transparent !important;
+  scrollbar-color: rgba(94,91,190,.50) transparent;
+}
+
+html.codex-dream-skin .dream-home {
+  --thread-content-max-width: min(950px, calc(100cqw - 44px)) !important;
+  overflow-x: hidden !important;
+}
+
+.dream-home > div:first-child {
+  padding-top: 15px !important;
+  min-height: 100% !important;
+}
+
+.dream-home > div:first-child > div:first-child {
+  flex: 0 0 430px !important;
+  min-height: 430px !important;
+  align-items: flex-start !important;
+  padding-bottom: 0 !important;
+}
+
+.dream-home > div:first-child > div:first-child > div:first-child {
+  position: relative !important;
+  isolation: isolate;
+  width: calc(100% - 44px) !important;
+  max-width: none !important;
+  height: 252px !important;
+  min-height: 252px !important;
+  flex: 0 1 auto !important;
+  padding: 0 !important;
+  border: 2px solid rgba(125,119,220,.72) !important;
+  border-radius: 25px !important;
+  overflow: visible !important;
+  background-image:
+    linear-gradient(90deg, rgba(51,45,126,.10), rgba(91,103,218,.04)),
+    var(--dream-art) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100%, cover !important;
+  background-position: center, center !important;
+  box-shadow: 0 14px 34px rgba(49,51,129,.22), inset 0 0 0 4px rgba(255,255,255,.20) !important;
+}
+
+.dream-home > div:first-child > div:first-child > div:first-child::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0 auto 0 0;
+  width: 58%;
+  border-radius: 23px 0 0 23px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(35,35,97,.96) 0%, rgba(65,58,145,.90) 54%, rgba(80,74,170,.56) 78%, transparent 100%);
+}
+
+.dream-home > div:first-child > div:first-child > div:first-child > div:first-child {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding-left: 38px;
+}
+
+.dream-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child {
+  width: 54% !important;
+  align-items: flex-start !important;
+  gap: 0 !important;
+}
+
+.dream-home [data-testid="home-icon"] {
+  display: none !important;
+}
+
+.dream-home [data-feature="game-source"] {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  max-width: 100% !important;
+  color: white !important;
+  font-size: clamp(20px, 2vw, 30px) !important;
+  line-height: 1.3 !important;
+  font-weight: 750 !important;
+  text-align: left !important;
+  text-shadow: 0 2px 12px rgba(27,27,79,.48), 0 1px 0 rgba(255,255,255,.24);
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.dream-home [data-feature="game-source"]::after {
+  content: var(--dream-skin-tagline, "月下灵光，陪你把灵感写成代码。");
+  display: block;
+  margin-top: 13px;
+  color: rgba(255,248,255,.94);
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 500;
+  letter-spacing: .02em;
+}
+
+.dream-home [data-feature="game-source"] button {
+  margin: 0 5px;
+  padding: 2px 9px 3px;
+  border: 1px solid rgba(222,225,255,.72);
+  border-radius: 999px;
+  background: rgba(220,224,255,.20);
+  color: #eef4ff !important;
+  text-decoration-color: rgba(219,230,255,.72) !important;
+  text-underline-offset: 5px;
+  box-shadow: inset 0 0 12px rgba(255,255,255,.10);
+}
+
+.dream-home [data-feature="game-source"] button::before {
+  content: var(--dream-skin-project-prefix, "选择项目 · ");
+  font-size: .48em;
+  font-weight: 600;
+  vertical-align: middle;
+  opacity: .86;
+}
+
+.dream-home > div:first-child > div:first-child > div:first-child > div:nth-child(2) {
+  left: 14px !important;
+  right: 14px !important;
+  top: 100% !important;
+  margin-top: 13px !important;
+}
+
+.dream-home .group\/home-suggestions {
+  overflow: visible !important;
+}
+
+.dream-home .group\/home-suggestions button {
+  position: relative !important;
+  min-height: 126px !important;
+  padding: 14px 13px 12px !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  text-align: center !important;
+  border: 1px solid rgba(139,134,214,.66) !important;
+  border-radius: 23px !important;
+  background:
+    radial-gradient(circle at 50% 25%, rgba(255,255,255,.96), transparent 34%),
+    linear-gradient(145deg, rgba(252,252,255,.97), rgba(235,236,255,.96)) !important;
+  color: #2f3067 !important;
+  font-weight: 600 !important;
+  line-height: 1.45 !important;
+  box-shadow: 0 8px 18px rgba(45,49,119,.13), inset 0 0 0 3px rgba(255,255,255,.50) !important;
+  transform: translateY(0);
+  transition: transform .18s ease, box-shadow .18s ease !important;
+}
+
+.dream-home .group\/home-suggestions button:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 13px 26px rgba(48,53,136,.18), 0 0 0 2px rgba(105,153,244,.18) !important;
+}
+
+.dream-home .group\/home-suggestions button > span:first-child > span:first-child {
+  width: 38px;
+  height: 38px;
+  display: grid !important;
+  place-items: center;
+  margin: 0 auto;
+  border-radius: 50%;
+  color: white !important;
+  background: linear-gradient(145deg, #64d9f4, #6558d5);
+  box-shadow: 0 0 0 7px rgba(214,230,255,.68), 0 5px 12px rgba(55,59,143,.24);
+}
+.dream-home .group\/home-suggestions button svg {
+  width: 21px !important;
+  height: 21px !important;
+  color: white !important;
+}
+.dream-home .group\/home-suggestions button > span:first-child {
+  justify-content: center !important;
+}
+.dream-home .group\/home-suggestions button > span:last-child {
+  align-items: center !important;
+  text-align: center !important;
+}
+
+html.codex-dream-skin .composer-surface-chrome {
+  border: 2px solid rgba(112,105,204,.56) !important;
+  border-radius: 25px !important;
+  background:
+    radial-gradient(circle at 88% 22%, rgba(255,255,255,.92), transparent 24%),
+    linear-gradient(145deg, rgba(252,252,255,.97), rgba(232,234,255,.95)) !important;
+  box-shadow: 0 10px 25px rgba(43,47,118,.16), inset 0 0 0 4px rgba(255,255,255,.45) !important;
+  backdrop-filter: none !important;
+  overflow: visible !important;
+}
+
+html.codex-dream-skin .composer-surface-chrome::before {
+  content: "☾";
+  position: absolute;
+  left: -13px;
+  top: -13px;
+  z-index: 20;
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: linear-gradient(145deg, #63d7ef, #6255cf);
+  box-shadow: 0 4px 12px rgba(43,48,128,.24);
+}
+
+.dream-home div:has(> .horizontal-scroll-fade-mask .group\/project-selector) {
+  position: relative;
+  padding-top: 28px !important;
+  border: 1px solid rgba(113,109,201,.40);
+  border-bottom: 0;
+  background: linear-gradient(180deg, rgba(249,249,255,.95), rgba(231,233,255,.90)) !important;
+}
+
+.dream-home div:has(> .horizontal-scroll-fade-mask .group\/project-selector)::before {
+  content: var(--dream-skin-project-label, "☾  选择项目");
+  position: absolute;
+  left: 13px;
+  top: 6px;
+  z-index: 2;
+  color: #4f48ab;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-shadow: 0 1px white;
+  white-space: nowrap;
+}
+
+.dream-home .group\/project-selector > button {
+  border-color: rgba(101,98,186,.38) !important;
+  background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(227,229,255,.88)) !important;
+  color: #454093 !important;
+  box-shadow: 0 3px 10px rgba(48,51,124,.11) !important;
+}
+
+html.codex-dream-skin .ProseMirror {
+  color: #303164 !important;
+  caret-color: #5e55cb !important;
+}
+
+html.codex-dream-skin button[class~="bg-token-foreground"] {
+  background: linear-gradient(145deg, #6dd7ef, #574cc5) !important;
+  color: white !important;
+  box-shadow: 0 5px 12px rgba(52,58,146,.26) !important;
+}
+
+html.codex-dream-skin article,
+html.codex-dream-skin [data-message-author-role] {
+  border-radius: 20px;
+}
+
+@media (max-width: 1120px) {
+  .dream-polaroid { display: none !important; }
+  .dream-ribbon { bottom: 70px; font-size: 25px; }
+  .dream-home { --thread-content-max-width: min(860px, calc(100cqw - 30px)) !important; }
+  .dream-home > div:first-child > div:first-child > div:first-child { width: calc(100% - 28px) !important; }
+}
+
+@media (max-width: 900px) {
+  .dream-signature { display: none !important; }
+  .dream-brand { left: 15px; }
+  .dream-brand b { font-size: 13px; }
+  .dream-home > div:first-child > div:first-child { flex-basis: 396px !important; min-height: 396px !important; }
+  .dream-home > div:first-child > div:first-child > div:first-child { height: 224px !important; min-height: 224px !important; background-size: 100% 100%, cover !important; }
+  .dream-home > div:first-child > div:first-child > div:first-child > div:first-child { padding-left: 26px; }
+  .dream-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child { width: 66% !important; }
+  .dream-home [data-feature="game-source"] { font-size: 18px !important; }
+  .dream-home [data-feature="game-source"]::after { font-size: 12px; margin-top: 10px; }
+  .dream-home .group\/home-suggestions button { min-height: 114px !important; font-size: 12px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dream-sparkles i { animation: none !important; }
+}

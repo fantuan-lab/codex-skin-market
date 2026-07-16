@@ -1,0 +1,98 @@
+name: Relay Provider Partnership / 中转站合作
+description: Propose a public, transparent collaboration with the Codex Skin Market beta project / 提交中转站合作申请
+title: "[Relay Partnership] "
+labels:
+  - partnership
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 中转站合作 / Relay Provider Partnership
+
+        Codex Skin Market 是一个**非 OpenAI 官方**的社区项目，目前仍处于 **Beta** 阶段。
+        This is an **unofficial community project not affiliated with OpenAI**, and it is currently in **Beta**.
+
+        此 Issue 是公开的。请仅填写可公开的信息，**不要提交 API Key、Token、Cookie、账号密码、私有接口或任何其他秘钥**。我们不会通过 Issue 索取凭据。
+        This issue is public. Share public information only. **Never post API keys, tokens, cookies, passwords, private endpoints, or any other credentials.** We will never request credentials in an issue.
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: 提交前确认 / Before submitting
+      options:
+        - label: 我理解本项目非 OpenAI 官方，且当前处于 Beta。 / I understand this project is unofficial and currently in Beta.
+          required: true
+        - label: 我确认本 Issue 不包含任何秘钥、Token、Cookie、密码或非公开接口。 / I confirm this issue contains no keys, tokens, cookies, passwords, or private endpoints.
+          required: true
+        - label: 我有权代表该服务提交本合作申请。 / I am authorized to submit this proposal for the service.
+          required: true
+
+  - type: input
+    id: provider_name
+    attributes:
+      label: 服务名称 / Provider name
+      description: 请填写公开品牌名。 / Public brand or service name.
+      placeholder: Example Relay
+    validations:
+      required: true
+
+  - type: input
+    id: public_url
+    attributes:
+      label: 公开网址 / Public URL
+      description: 官网、公开状态页或公开介绍页；不要填写私有后台地址。 / Website, public status page, or public profile; never include a private dashboard URL.
+      placeholder: https://example.com
+    validations:
+      required: true
+
+  - type: dropdown
+    id: partnership_type
+    attributes:
+      label: 合作方向 / Partnership type
+      multiple: true
+      options:
+        - 测试额度或兼容性支持 / Testing credits or compatibility support
+        - 联合教程或内容分发 / Co-authored guides or content distribution
+        - 公开展示位或赞助 / Public listing or sponsorship
+        - 用户福利或活动 / User benefits or campaign
+        - 其他公开合作 / Other public collaboration
+    validations:
+      required: true
+
+  - type: textarea
+    id: service_summary
+    attributes:
+      label: 服务简介与覆盖范围 / Service summary and coverage
+      description: 简述服务地区、适用用户、稳定性说明及公开可验证的信息。请勿粘贴密钥或私有接口。 / Describe regions, intended users, reliability, and publicly verifiable information. Do not paste credentials or private endpoints.
+      placeholder: |
+        服务地区 / Regions:
+        适用用户 / Intended users:
+        公开状态页或文档 / Public status or docs:
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 合作方案 / Proposal
+      description: 说明双方各自提供什么、希望达成什么，以及如何向用户透明披露合作关系。 / Explain what each side contributes, the intended outcome, and how the relationship will be disclosed transparently to users.
+      placeholder: |
+        我们可以提供 / We can provide:
+        希望获得 / We are looking for:
+        公开披露方式 / Disclosure plan:
+    validations:
+      required: true
+
+  - type: textarea
+    id: user_value_and_risks
+    attributes:
+      label: 用户价值与风险说明 / User value and risk notes
+      description: 请说明真实用户价值、限制、退款/支持入口，以及潜在风险。不得承诺无法验证的速度、可用率或“官方”关系。 / State concrete user value, limitations, refund/support channels, and risks. Do not claim unverifiable performance, availability, or an official relationship.
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: 其他公开信息 / Additional public context
+      description: 可选。请勿留下需要保密的联系方式；项目维护者可直接通过你的 GitHub 账号回复。 / Optional. Do not post private contact details; maintainers can reply through your GitHub account.

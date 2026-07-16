@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex 月影灵编"
+  short_description: "Apply and safely restore the blue-violet Moon Spirit Codex skin"
+  default_prompt: "Use $codex-moon-spirit-skin to apply, verify, update, or restore the Moon Spirit Codex desktop skin."

@@ -1,0 +1,129 @@
+name: Bug Report / Bug 反馈
+description: Report a reproducible problem with the Moon Spirit Codex skin beta / 反馈月影灵编 Beta 皮肤的可复现问题
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug 反馈 / Bug Report
+
+        本项目是**非 OpenAI 官方**的社区项目，当前处于 **Beta** 阶段。请先恢复原皮肤，确认 Codex 本体是否仍有同样问题。
+        This is an **unofficial community project not affiliated with OpenAI** and is currently in **Beta**. Restore the original UI first and check whether the issue also occurs in Codex itself.
+
+        此 Issue 是公开的。日志与截图必须脱敏，**不要提交 API Key、Token、Cookie、Authorization Header、账号密码、私有接口或个人数据**。
+        This issue is public. Sanitize logs and screenshots. **Never post API keys, tokens, cookies, authorization headers, passwords, private endpoints, or personal data.**
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: 提交前确认 / Before submitting
+      options:
+        - label: 我理解本项目非 OpenAI 官方，且当前处于 Beta。 / I understand this project is unofficial and currently in Beta.
+          required: true
+        - label: 我已删除日志与截图中的秘钥、Token、Cookie、密码、私有接口和个人数据。 / I removed keys, tokens, cookies, passwords, private endpoints, and personal data from logs and screenshots.
+          required: true
+        - label: 我已搜索现有 Issue，没有发现相同报告。 / I searched existing issues and did not find a duplicate.
+          required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 平台 / Platform
+      options:
+        - macOS
+        - Windows 11
+        - Windows 10
+        - 其他 / Other
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: 系统版本 / OS version
+      placeholder: macOS 15.5 / Windows 11 24H2
+    validations:
+      required: true
+
+  - type: input
+    id: codex_version
+    attributes:
+      label: Codex 版本 / Codex version
+      description: 可在应用的 About/关于页面查看；不要提交账号信息。 / Find this in the app's About screen; do not include account information.
+      placeholder: 0.x.x
+    validations:
+      required: true
+
+  - type: input
+    id: skin_version
+    attributes:
+      label: 皮肤包版本 / Skin package version
+      placeholder: v0.1.0-beta.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: 安装方式 / Installation method
+      options:
+        - 安装脚本 / Installer script
+        - 手动安装 / Manual installation
+        - 不确定 / Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      description: 请给出最短、稳定的复现步骤。 / Provide the shortest reliable reproduction steps.
+      placeholder: |
+        1. 打开 / Open ...
+        2. 点击 / Click ...
+        3. 看到 / Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期结果 / Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果 / Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: restore_check
+    attributes:
+      label: 恢复原皮肤后的结果 / Result after restoring the original UI
+      description: 说明问题是否仍然存在；若无法恢复，也请写明。 / State whether the issue remains; if you could not restore, say so.
+    validations:
+      required: true
+
+  - type: textarea
+    id: sanitized_logs
+    attributes:
+      label: 已脱敏日志 / Sanitized logs
+      description: 可选。仅附与问题相关的片段，并再次确认没有任何凭据或个人信息。 / Optional. Include only relevant excerpts and verify again that no credentials or personal information remain.
+      render: shell
+
+  - type: textarea
+    id: sanitized_screenshots
+    attributes:
+      label: 已脱敏截图 / Sanitized screenshots
+      description: 可选。可拖入截图；请遮住账号、路径、接口地址及个人信息。 / Optional. Drag screenshots here after redacting accounts, paths, endpoint URLs, and personal information.
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: 其他信息 / Additional context
+      description: 例如是否可稳定复现、是否使用多显示器或代理。请勿提交代理秘钥。 / For example, reproducibility, multiple displays, or proxy usage. Never post proxy credentials.

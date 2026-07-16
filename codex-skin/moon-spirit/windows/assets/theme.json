@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "moon-spirit-2026",
+  "name": "月影灵编",
+  "brandSubtitle": "MOON SPIRIT CODEX SKIN",
+  "tagline": "月下灵光，陪你把灵感写成代码。",
+  "projectPrefix": "选择项目 · ",
+  "projectLabel": "☾  选择项目",
+  "statusText": "MOONLIGHT ONLINE",
+  "quote": "灵光落笔，万象成章",
+  "image": "dream-reference.png",
+  "colors": {
+    "background": "#0A102C",
+    "panel": "#111A46",
+    "panelAlt": "#1A2458",
+    "accent": "#8B84FF",
+    "accentAlt": "#D3CCFF",
+    "secondary": "#67E8FF",
+    "highlight": "#F3CC8B",
+    "text": "#F7F6FF",
+    "muted": "#B4B0D6",
+    "line": "rgba(139, 132, 255, .28)"
+  }
+}

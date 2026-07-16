@@ -1,0 +1,9 @@
+月影灵编 · Codex 皮肤（macOS）
+
+交付压缩包：月影灵编-Codex皮肤-macOS.zip
+
+本包基于 Fei-Away/Codex-Dream-Skin commit 568469a4，保留 MIT 软件许可证与完整安装、验证、恢复机制。
+
+双击“安装月影灵编.command”。如果 macOS 阻止打开，请在 Finder 中右键（或按住 Control 点击）该文件，选择“打开”，再确认“打开”。不要关闭 Gatekeeper。
+
+安装完成后会应用内置主题，桌面会出现启动、定制、验证和恢复四个入口。不要只复制图片或 CSS；隐藏目录 .codex-dream-skin-studio 是完整运行引擎，请勿删除。使用内置图片前请阅读 ARTWORK-LICENSE.md。
