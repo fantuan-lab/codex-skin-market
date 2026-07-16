@@ -7,6 +7,6 @@
 - 导入日期：`2026-07-16`
 
 `vendor/Codex-Dream-Skin/` 是上述 commit 的只读快照（不含 `.git`）。
-`moon-spirit/` 是基于这个快照制作的「月影灵编」双平台皮肤工作副本。
+`moon-spirit/` 和 `bamboo-panda/` 是基于这个快照制作的「月影灵编」与「竹影熊猫」双平台皮肤工作副本。
 
 上游 macOS 目录中的 `LICENSE` 为 MIT 许可证；工作副本必须保留该许可证和 `NOTICE.md`。主题原创图片不自动转为 MIT 许可。

@@ -1,0 +1,2 @@
+c40fcf9110cf64e87b2d2f1f5d5fd92a5540cf3ddc00e4cb5635d7e4bae48701  codex-bamboo-panda-macos-beta1.zip
+285769eb18ba6321633e3243b8938d1dbd46f52beda230d058c31d5d6f83868d  codex-bamboo-panda-windows-beta1.zip

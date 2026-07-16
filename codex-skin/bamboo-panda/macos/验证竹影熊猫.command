@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+INSTALLED="$HOME/.codex/codex-dream-skin-studio/scripts/verify-dream-skin-macos.sh"
+OUTPUT="$HOME/Desktop/竹影熊猫 Codex 验证.png"
+if [ ! -x "$INSTALLED" ]; then
+  /usr/bin/osascript -e 'display alert "请先双击“安装竹影熊猫.command”完成安装。" as warning' >/dev/null
+  exit 1
+fi
+"$INSTALLED" --screenshot "$OUTPUT"
+/usr/bin/open "$OUTPUT"

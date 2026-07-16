@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex 竹影熊猫"
+  short_description: "Apply and safely restore the Bamboo Panda Codex skin on Windows"
+  default_prompt: "Use $codex-bamboo-panda-skin to install, verify, update, or restore the Bamboo Panda Codex desktop skin."

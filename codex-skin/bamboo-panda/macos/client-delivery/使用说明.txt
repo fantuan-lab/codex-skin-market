@@ -1,0 +1,15 @@
+竹影熊猫 · Codex 皮肤（macOS）
+
+交付压缩包：竹影熊猫-Codex皮肤-macOS.zip
+
+本包基于 Fei-Away/Codex-Dream-Skin commit 568469a4，保留 MIT 软件许可证与完整安装、验证、恢复机制。
+
+双击“安装竹影熊猫.command”。安装器会先备份当前活动主题，再激活内置熊猫主题，并为 Codex 临时选择浅色外观。
+
+如果 macOS 阻止打开，请在 Finder 中右键（或按住 Control 点击）该文件，选择“打开”，再确认“打开”。不要关闭 Gatekeeper。
+
+安装完成后，桌面会出现启动、定制、验证和恢复四个“竹影熊猫”入口。“恢复”会写回安装前的 Codex 外观配置。
+
+解压目录本身也提供“验证竹影熊猫.command”和“恢复Codex原界面.command”，便于安装后直接验收或一键恢复。
+
+不要只复制图片或 CSS；隐藏目录 .codex-dream-skin-studio 是完整运行引擎，请勿删除。使用内置图片前请阅读 ARTWORK-LICENSE.md。
