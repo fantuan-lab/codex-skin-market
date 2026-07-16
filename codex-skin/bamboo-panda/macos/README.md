@@ -6,11 +6,18 @@
 
 ## 用户安装
 
-1. 从 GitHub Release 下载 `竹影熊猫-Codex皮肤-macOS.zip` 并解压完整目录。
-2. 双击 `安装竹影熊猫.command`。
+下图是客户 ZIP 完整解压后的正确目录：
+
+![竹影熊猫 macOS 安装包解压后的文件](../../../docs/images/bamboo-panda-macos-unpacked.png)
+
+普通用户只需要双击 `安装竹影熊猫.command`；`给 Codex 的部署提示词.md`、素材许可和其他说明文件不需要运行。
+
+1. 从 GitHub Release 下载 `codex-bamboo-panda-macos-beta1.zip` 并解压完整目录。
+2. 建议先退出 Codex，再双击 `安装竹影熊猫.command`；如提示重启，选择“重启并应用”。
 3. 如果 macOS 首次阻止打开，在 Finder 中右键该文件，选择“打开”，再确认“打开”；不要关闭 Gatekeeper。
 4. 安装器会先保存现有活动主题，再激活内置竹影熊猫主题，并临时把 Codex 外观切到浅色。
-5. 桌面会生成启动、定制、验证和恢复四个竹影熊猫入口。
+5. 安装完成后双击 `验证竹影熊猫.command` 检查效果；不想继续使用时双击 `恢复Codex原界面.command`。
+6. 桌面会生成启动、定制、验证和恢复四个竹影熊猫入口，方便后续使用。
 
 客户解压目录顶层同时包含 `验证竹影熊猫.command` 和 `恢复Codex原界面.command`，无需寻找隐藏引擎即可验收或恢复。
 

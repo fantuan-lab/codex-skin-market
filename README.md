@@ -34,23 +34,36 @@
 
 月影灵编的完整发布说明与 SHA-256 见 [Moon Spirit Beta 1](https://github.com/fantuan-lab/codex-skin-market/releases/tag/v0.1.0-beta.1)。竹影熊猫的校验值与最新验证边界以对应 Release 为准。
 
-## 用户拿到后怎么用
+## 用户下载后怎么用
+
+下面是 macOS 安装包**完整解压后**的正确目录。看到这些文件，说明解压成功：
+
+![竹影熊猫 macOS 安装包解压后的文件](./docs/images/bamboo-panda-macos-unpacked.png)
+
+> 普通用户只需要使用“安装”“验证”“恢复”三个入口。`给 Codex 的部署提示词.md`、`ARTWORK-LICENSE.md` 和其他说明文件不需要运行。
 
 ### macOS
 
-1. 下载皮肤名称中带 `macos` 的 ZIP。
-2. 完整解压，不要在压缩包预览中运行文件。
-3. 打开解压后的最外层文件夹，双击顶层“安装 / Install”入口。
-4. 如果 macOS 阻止打开，请右键或按住 Control 点击安装入口，再选择“打开”；不要关闭 Gatekeeper。
-5. 遇到问题先运行包内验证工具；需要退出主题时运行同包提供的恢复入口。
+安装前请确认官方 Codex Desktop 已安装并至少启动过一次，建议先退出正在运行的 Codex。
+
+1. 下载 `codex-bamboo-panda-macos-beta1.zip`。
+2. 双击 ZIP 完整解压；不要在压缩包预览中运行脚本。
+3. 打开解压后的“竹影熊猫 Codex 皮肤”文件夹。
+4. 双击 `安装竹影熊猫.command`。终端会自动完成安装；如提示重启 Codex，选择“重启并应用”。
+5. 如果 macOS 提示“无法验证开发者”或阻止打开：右键（或按住 Control 点击）`安装竹影熊猫.command`，选择“打开”，再确认“打开”。不要关闭 Gatekeeper。
+6. 安装完成后，可双击 `验证竹影熊猫.command` 检查主题是否生效；验证截图会保存到桌面。
+7. 不想继续使用时，双击 `恢复Codex原界面.command`，即可移除皮肤并恢复安装前的 Codex 外观。
 
 ### Windows 10 / 11
 
-1. 下载皮肤名称中带 `windows` 的 ZIP。
-2. 右键“全部解压”，再打开解压后的最外层文件夹。
-3. 双击顶层 `Install … .cmd` 安装入口。
-4. 后续使用安装器创建的对应皮肤启动、验证和恢复入口。
-5. 如遇 SmartScreen，请先核对 Release 中的 SHA-256；当前 Beta 尚未进行 Authenticode 签名，不要关闭 SmartScreen。
+1. 下载 `codex-bamboo-panda-windows-beta1.zip`。
+2. 右键 ZIP，选择“全部解压”，再打开最外层文件夹。
+3. 双击 `Install Bamboo Panda.cmd` 完成安装。
+4. 使用 `Start Bamboo Panda.cmd` 启动皮肤，使用 `Verify Bamboo Panda.cmd` 检查安装结果。
+5. 不想继续使用时，双击 `Restore Bamboo Panda.cmd` 恢复 Codex 原界面。
+6. 如遇 SmartScreen，请先核对 Release 中的 SHA-256；当前 Beta 尚未进行 Authenticode 签名，不要关闭 SmartScreen。
+
+安装另一款 Codex Skin Lab 皮肤会替换当前活动皮肤，但不会修改 Codex 官方安装包。出现问题时优先运行验证入口，随后可随时恢复官方界面。
 
 Bug 反馈请使用[结构化 Issue 表单](https://github.com/fantuan-lab/codex-skin-market/issues/new?template=bug-report.yml)。不要上传 API Key、Token、Cookie、密码、私人代码或未脱敏日志。
 
