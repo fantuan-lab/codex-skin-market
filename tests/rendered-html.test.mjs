@@ -13,27 +13,25 @@ async function render() {
   );
 }
 
-test("server-renders the Codex Skin Lab two-skin beta landing page", async () => {
+test("server-renders the ClearTag landing page and local analyzer", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Codex 皮肤库｜竹影熊猫、月影灵编 macOS \/ Windows Beta<\/title>/i);
-  assert.match(html, /竹影熊猫/);
-  assert.match(html, /月影灵编/);
-  assert.match(html, /下载 ZIP/);
-  assert.match(html, /完整解压/);
-  assert.match(html, /双击安装入口/);
-  assert.match(html, /中转站合作/);
-  assert.match(html, /非 OpenAI 官方/);
-  assert.match(html, /公开 Beta/);
-  assert.match(html, /视觉概念图/);
-  assert.match(html, /bamboo-panda-v0\.1\.0-beta\.1/);
-  assert.match(html, /codex-bamboo-panda-macos-beta1\.zip/);
-  assert.match(html, /codex-bamboo-panda-windows-beta1\.zip/);
-  assert.match(html, /codex-moon-spirit-macos-beta1\.zip/);
-  assert.match(html, /codex-moon-spirit-windows-beta1\.zip/);
-  assert.doesNotMatch(html, /立即购买|6 款可选|本周主推|人气推荐/);
-  assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
+  assert.match(html, /<html[^>]+lang="en"/i);
+  assert.match(html, /<title>ClearTag · Guided PDF accessibility remediation<\/title>/i);
+  assert.match(html, /Turn accessibility findings into reviewable fixes and defensible evidence/);
+  assert.match(html, /Choose or drop a PDF/);
+  assert.match(html, /Evidence mapping/);
+  assert.match(html, /WCAG 2\.1 AA/);
+  assert.match(html, /Section 508/);
+  assert.match(html, /PDF\/UA-1/);
+  assert.match(html, /EN 301 549/);
+  assert.match(html, /No server-side PDF retention/);
+  assert.match(html, /Not yet offered/);
+  assert.match(html, /Skip to main content/);
+  assert.doesNotMatch(html, /all PDFs (?:must|need to) be remediated/i);
+  assert.doesNotMatch(html, /automatically certif|guaranteed compliant|100% compliant/i);
+  assert.doesNotMatch(html, /Codex Skin Lab|竹影熊猫|月影灵编/);
 });
