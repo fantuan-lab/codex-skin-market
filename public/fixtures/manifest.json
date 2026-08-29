@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-08-29T12:00:00.000Z",
+  "generator": "PDFKit 0.20.1 + PNGJS 7",
+  "fixtures": [
+    {
+      "file": "well-tagged-basic.pdf",
+      "intent": "Positive machine-verifiable signals: Title, DisplayDocTitle, Lang, tagged H1/P/list/Figure-alt/table and a link annotation. Not represented as a conformance certificate."
+    },
+    {
+      "file": "known-accessibility-issues.pdf",
+      "intent": "Text PDF with deliberately missing Title, Lang, and tagged structure plus visual list/table patterns and an AcroForm widget without a TU tooltip."
+    },
+    {
+      "file": "image-only-scan.pdf",
+      "intent": "One-page raster-only PDF with no text objects, used to verify the OCR-risk signal comes from PDF content."
+    }
+  ]
+}

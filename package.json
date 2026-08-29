@@ -1,8 +1,8 @@
 {
-  "name": "codex-skin-market",
+  "name": "cleartag-pdf-accessibility-mvp",
   "version": "0.1.0-beta.1",
   "private": true,
-  "description": "Codex Skin Lab：macOS 与 Windows 双平台 Codex Desktop 皮肤、下载与 Relay Provider 合作入口。",
+  "description": "ClearTag: local-first guided PDF accessibility remediation and evidence-pack MVP.",
   "engines": {
     "node": ">=22.13.0"
   },
@@ -10,34 +10,50 @@
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "test": "npm run test:unit && npm run build && node --test tests/rendered-html.test.mjs",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "fixtures:generate": "node scripts/generate-pdf-fixtures.mjs",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "verify": "npm run typecheck && npm run lint && npm test && npm run test:e2e",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "drizzle-orm": "0.45.2",
-    "next": "16.2.6",
-    "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "jszip": "^3.10.1",
+    "next": "16.3.3",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.3.289",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.37.1",
+    "@axe-core/playwright": "^4.13.0",
+    "@cloudflare/vite-plugin": "1.54.2",
+    "@cloudflare/workers-types": "5.20260829.1",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
+    "@types/pdfkit": "^0.17.6",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.26",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.2.6",
-    "react-server-dom-webpack": "19.2.6",
+    "eslint-config-next": "16.3.3",
+    "pdfkit": "^0.20.1",
+    "pngjs": "^7.0.0",
+    "react-server-dom-webpack": "19.2.8",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vinext": "0.0.50",
-    "vite": "8.0.13",
-    "wrangler": "4.92.0"
+    "vite": "8.2.2",
+    "vitest": "^4.1.11",
+    "wrangler": "4.127.1"
   },
   "type": "module"
 }
