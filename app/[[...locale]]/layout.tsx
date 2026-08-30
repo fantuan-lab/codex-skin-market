@@ -53,7 +53,33 @@ export async function generateMetadata({
       description,
       images: ["/og.png"],
     },
-    icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
+    icons: {
+      icon: [
+        {
+          url: "/cleartag-mark-v2.svg",
+          type: "image/svg+xml",
+          sizes: "any",
+        },
+        {
+          url: "/favicon-32-v2.png",
+          type: "image/png",
+          sizes: "32x32",
+        },
+        {
+          url: "/favicon-16-v2.png",
+          type: "image/png",
+          sizes: "16x16",
+        },
+      ],
+      shortcut: "/favicon.ico",
+      apple: [
+        {
+          url: "/apple-touch-icon-v2.png",
+          type: "image/png",
+          sizes: "180x180",
+        },
+      ],
+    },
   };
 }
 

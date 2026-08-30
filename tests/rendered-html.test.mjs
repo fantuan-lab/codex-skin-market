@@ -13,6 +13,15 @@ async function render(pathname = "/") {
   );
 }
 
+function assertBrandIcons(html) {
+  assert.match(html, /href="\/cleartag-mark-v2\.svg"[^>]+sizes="any"/i);
+  assert.match(html, /href="\/favicon-32-v2\.png"[^>]+sizes="32x32"/i);
+  assert.match(html, /href="\/favicon-16-v2\.png"[^>]+sizes="16x16"/i);
+  assert.match(html, /rel="shortcut icon"[^>]+href="\/favicon\.ico"/i);
+  assert.match(html, /rel="apple-touch-icon"[^>]+href="\/apple-touch-icon-v2\.png"/i);
+  assert.doesNotMatch(html, /href="\/favicon\.svg"/i);
+}
+
 test("server-renders the English ClearTag landing page and local analyzer", async () => {
   const response = await render("/");
   assert.equal(response.status, 200);
@@ -34,6 +43,7 @@ test("server-renders the English ClearTag landing page and local analyzer", asyn
   assert.match(html, /No server-side PDF retention/);
   assert.match(html, /Not yet offered/);
   assert.match(html, /Skip to main content/);
+  assertBrandIcons(html);
   assert.doesNotMatch(html, /all PDFs (?:must|need to) be remediated/i);
   assert.doesNotMatch(html, /automatically certif|guaranteed compliant|100% compliant/i);
   assert.doesNotMatch(html, /Codex Skin Lab|竹影熊猫|月影灵编/);
@@ -58,5 +68,6 @@ test("server-renders a complete Chinese route with the correct document language
   assert.match(html, /EN 301 549/);
   assert.match(html, /此版本不在服务器端留存 PDF/);
   assert.match(html, /不承诺一键合规/);
+  assertBrandIcons(html);
   assert.doesNotMatch(html, /一键(?:实现|完成)合规|自动获得认证|保证所有 PDF 符合|100% 合规/i);
 });

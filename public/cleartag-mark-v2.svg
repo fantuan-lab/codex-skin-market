@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#102421"/>
+  <svg x="5" y="5" width="22" height="22" viewBox="0 0 256 256" aria-hidden="true">
+    <!-- Phosphor Icons Tag, fill weight (MIT). -->
+    <path fill="#FBFAF6" d="M243.31 136 144 36.69A15.86 15.86 0 0 0 132.69 32H40a8 8 0 0 0-8 8v92.69A15.86 15.86 0 0 0 36.69 144L136 243.31a16 16 0 0 0 22.63 0l84.68-84.68a16 16 0 0 0 0-22.63ZM84 96a12 12 0 1 1 12-12 12 12 0 0 1-12 12Z"/>
+  </svg>
+</svg>

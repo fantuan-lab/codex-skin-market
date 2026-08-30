@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, FilePdf, LockKey } from "@phosphor-icons/react";
+import { ArrowRight, LockKey, Tag } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
@@ -37,7 +37,7 @@ export function AppShell({
       <header className="topbar">
         <a className="brand" href="#top" aria-label={copy.navigation.brandAria}>
           <span className="brand-mark" aria-hidden="true">
-            <FilePdf weight="fill" />
+            <Tag weight="fill" />
           </span>
           <span className="brand-copy">
             <strong>ClearTag</strong>
