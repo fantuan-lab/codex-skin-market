@@ -186,9 +186,17 @@ describe("real PDF fixture analysis", () => {
       fileName: "known-accessibility-issues.pdf",
       profileIds: [...profiles],
     });
-    const englishHtml = renderEvidenceHtml(result);
-    const chineseHtml = renderEvidenceHtml(result, "zh");
-    const chinesePack = await buildEvidencePack(result, "zh");
+    const reportAnalysis = structuredClone(result);
+    reportAnalysis.metadata.safetyInspection = {
+      ...reportAnalysis.metadata.safetyInspection,
+      metadata: "present",
+      markInfo: "absent",
+      signatures: "unknown",
+    };
+    const inputSnapshot = structuredClone(reportAnalysis);
+    const englishHtml = renderEvidenceHtml(reportAnalysis);
+    const chineseHtml = renderEvidenceHtml(reportAnalysis, "zh");
+    const chinesePack = await buildEvidencePack(reportAnalysis, "zh");
     const archive = await import("jszip").then(({ default: JSZip }) =>
       JSZip.loadAsync(chinesePack.blob.arrayBuffer()),
     );
@@ -199,8 +207,13 @@ describe("real PDF fixture analysis", () => {
       fileName: string;
       certificateOfConformance: boolean;
       findings: Array<{ ruleId: string; title: string }>;
+      metadata: { safetyInspection: PdfSafetyInspection };
+      pages: Array<{ annotationCount: number }>;
     };
     const readme = await archive.file("README.txt")!.async("string");
+    const unknownProbeRow = chineseHtml.match(
+      /<tr data-probe-state="unknown">[\s\S]*?<\/tr>/,
+    )?.[0];
 
     expect(englishHtml).toContain('<html lang="en">');
     expect(englishHtml).toContain("Not a certificate of conformance");
@@ -213,6 +226,10 @@ describe("real PDF fixture analysis", () => {
     expect(chineseHtml).toContain("缺少文档标题元数据");
     expect(chineseHtml).toContain("Section 508");
     expect(chineseHtml).not.toMatch(/>Passed</i);
+    expect(chineseHtml).toContain("受限修订安全探测");
+    expect(unknownProbeRow).toContain("数字签名");
+    expect(unknownProbeRow).toContain("无法确定");
+    expect(unknownProbeRow).not.toContain("未检测到");
     expect(Object.keys(archive.files)).toEqual(
       expect.arrayContaining(["remediation-evidence.html", "evidence.json", "README.txt"]),
     );
@@ -224,6 +241,16 @@ describe("real PDF fixture analysis", () => {
     expect(machineRecord.findings.find(({ ruleId }) => ruleId === "META-001")?.title).toBe(
       "缺少文档标题元数据",
     );
+    expect(machineRecord.metadata.safetyInspection).toEqual(
+      reportAnalysis.metadata.safetyInspection,
+    );
+    expect(new Set(Object.values(machineRecord.metadata.safetyInspection))).toEqual(
+      new Set(["present", "absent", "unknown"]),
+    );
+    expect(machineRecord.pages.map(({ annotationCount }) => annotationCount)).toEqual(
+      reportAnalysis.pages.map(({ annotationCount }) => annotationCount),
+    );
+    expect(reportAnalysis).toEqual(inputSnapshot);
     expect(readme).toContain("不是符合性证书");
     expect(readme).toContain("known-accessibility-issues.pdf");
   });

@@ -5,6 +5,8 @@ import type {
   FindingCategory,
   FindingStatus,
   PdfVersionRecord,
+  PdfSafetyInspection,
+  PdfSafetyProbeState,
   Severity,
   StandardProfileId,
 } from "./pdf/types";
@@ -320,6 +322,13 @@ const EN_UI_COPY = {
     check: "Check",
     recordedState: "Recorded state",
     evidenceNote: "Evidence note",
+    safetyLabel: "Revision safety",
+    safetyTitle: "Analyzer safety probes",
+    safetyRegionAria: "Analyzer safety probes table",
+    safetyCaption: "These are analyzer observations, not permission to write. An inconclusive probe disables automatic revision, and the real PDF bytes are independently preflighted again before any new version is created.",
+    safetyProbe: "Probe",
+    safetyState: "Observed state",
+    safetyEffect: "Revision effect",
     versionRecord: "Version record",
     fileVersion: "file version",
     fileVersions: "file versions",
@@ -353,6 +362,11 @@ const EN_UI_COPY = {
     totalsAria: "Finding status totals",
     evidenceMappings: "Evidence mappings",
     declaredLimits: "Declared limits",
+    safetyHeading: "Restricted revision safety probes",
+    safetyCaption: "Analyzer observations only. An inconclusive probe disables automatic revision; the original PDF bytes are independently preflighted again before writeback.",
+    safetyProbe: "Probe",
+    safetyState: "Observed state",
+    safetyEffect: "Revision effect",
     coverageHeading: "Coverage register",
     coverageCaption: "What the analyzer observed, and what still needs human work",
     check: "Check",
@@ -623,6 +637,13 @@ const ZH_UI_COPY: UiCopy = {
     check: "检查项",
     recordedState: "记录状态",
     evidenceNote: "证据说明",
+    safetyLabel: "修订安全",
+    safetyTitle: "分析器安全探测",
+    safetyRegionAria: "分析器安全探测表",
+    safetyCaption: "这些只是分析器观察结果，并不构成写回授权。任何无法确定的探测都会禁用自动修订；创建新版本前还会针对真实 PDF 字节再次执行独立严格预检。",
+    safetyProbe: "探测项",
+    safetyState: "观察状态",
+    safetyEffect: "对修订的影响",
     versionRecord: "版本记录",
     fileVersion: "个文件版本",
     fileVersions: "个文件版本",
@@ -656,6 +677,11 @@ const ZH_UI_COPY: UiCopy = {
     totalsAria: "各状态发现数量",
     evidenceMappings: "证据映射",
     declaredLimits: "已声明限制",
+    safetyHeading: "受限修订安全探测",
+    safetyCaption: "以下仅为分析器观察结果。任何无法确定的探测都会禁用自动修订；写回前还会针对原始 PDF 字节再次执行独立严格预检。",
+    safetyProbe: "探测项",
+    safetyState: "观察状态",
+    safetyEffect: "对修订的影响",
     coverageHeading: "覆盖范围登记",
     coverageCaption: "分析器观察到的内容及仍需人工完成的工作",
     check: "检查项",
@@ -881,6 +907,86 @@ export function statusLabel(value: FindingStatus, locale: Locale): string {
 
 export function coverageLabel(value: CoverageItem["state"], locale: Locale): string {
   return LABEL_COPY.coverage[locale][value];
+}
+
+export const PDF_SAFETY_PROBE_KEYS = [
+  "metadata",
+  "markInfo",
+  "fieldObjects",
+  "signatures",
+  "javaScriptActions",
+  "structureTrees",
+] as const satisfies ReadonlyArray<keyof PdfSafetyInspection>;
+
+const SAFETY_PROBE_LABELS: Readonly<
+  Record<Locale, Record<keyof PdfSafetyInspection, string>>
+> = {
+  en: {
+    metadata: "Document metadata",
+    markInfo: "MarkInfo declarations",
+    fieldObjects: "Form field objects",
+    signatures: "Digital signatures",
+    javaScriptActions: "JavaScript and actions",
+    structureTrees: "Tagged structure trees",
+  },
+  zh: {
+    metadata: "文档元数据",
+    markInfo: "MarkInfo 声明",
+    fieldObjects: "表单字段对象",
+    signatures: "数字签名",
+    javaScriptActions: "JavaScript 与动作",
+    structureTrees: "标签结构树",
+  },
+};
+
+export function safetyProbeLabel(
+  probe: keyof PdfSafetyInspection,
+  locale: Locale,
+): string {
+  return SAFETY_PROBE_LABELS[locale][probe];
+}
+
+export function safetyStateLabel(
+  state: PdfSafetyProbeState,
+  locale: Locale,
+): string {
+  if (locale === "zh") {
+    return {
+      present: "已发现",
+      absent: "未检测到",
+      unknown: "无法确定",
+    }[state];
+  }
+  return {
+    present: "Present",
+    absent: "Not detected",
+    unknown: "Inconclusive",
+  }[state];
+}
+
+export function safetyStateEffect(
+  probe: keyof PdfSafetyInspection,
+  state: PdfSafetyProbeState,
+  locale: Locale,
+): string {
+  if (state === "unknown") {
+    return locale === "zh"
+      ? "探测没有得出可靠结论；自动修订已禁用。"
+      : "The probe did not reach a reliable conclusion; automatic revision is disabled.";
+  }
+  if (state === "present" && probe !== "metadata") {
+    return locale === "zh"
+      ? "检测到受限结构；自动修订已禁用并应升级给专业人员。"
+      : "Restricted content was detected; automatic revision is disabled and specialist review is required.";
+  }
+  if (state === "present") {
+    return locale === "zh"
+      ? "分析器读取到了元数据；此结果本身不构成写回授权。"
+      : "The analyzer read document metadata; this result alone does not authorize writeback.";
+  }
+  return locale === "zh"
+    ? "分析器未暴露此信号；仍须在写回前独立预检真实字节。"
+    : "The analyzer did not expose this signal; independent raw-byte preflight is still required before writeback.";
 }
 
 export function categoryLabel(value: FindingCategory, locale: Locale): string {

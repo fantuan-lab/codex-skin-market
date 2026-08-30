@@ -7,8 +7,10 @@ import {
   getStandardProfileCopy,
   getUiCopy,
   isLocale,
+  localizeAnalyzerLimit,
   localizeFinding,
   localizeFindingLocation,
+  localizeVersionRecord,
   severityLabel,
   statusLabel,
 } from "@/lib/i18n";
@@ -91,5 +93,38 @@ describe("bilingual UI copy", () => {
     expect(severityLabel("high", "zh")).toBe("高");
     expect(detectionLabel("manual", "zh")).toBe("需要人工验证");
     expect(categoryLabel("reading-order", "zh")).toBe("阅读顺序");
+  });
+
+  it("localizes the fail-closed revision boundary and restricted revision records", () => {
+    expect(
+      localizeAnalyzerLimit(
+        "Restricted metadata revision is offered only for PDF 1.7 files whose analyzer safety probes are conclusive and whose exposed signals remain inside the simple-document boundary.",
+        "zh",
+      ),
+    ).toContain("安全探测均有明确结论");
+
+    expect(
+      localizeVersionRecord(
+        {
+          version: 2,
+          label: "Rechecked restricted metadata revision",
+          fingerprint: "sha256-after",
+          createdAt: "2026-08-30T00:00:00.000Z",
+          changes: [
+            "Set document Title in the document information dictionary",
+            "Set document catalog language to zh-CN",
+            "Updated the document modification date for the new revision",
+          ],
+        },
+        "zh",
+      ),
+    ).toMatchObject({
+      label: "已复查的受限元数据修订版",
+      changes: [
+        "在文档信息字典中设置文档标题",
+        "将文档目录语言设置为 zh-CN",
+        "为新修订版更新文档修改日期",
+      ],
+    });
   });
 });

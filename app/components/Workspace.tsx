@@ -27,6 +27,10 @@ import {
   localizeVersionRecord,
   pageCountLabel,
   pageLabel,
+  PDF_SAFETY_PROBE_KEYS,
+  safetyProbeLabel,
+  safetyStateEffect,
+  safetyStateLabel,
   severityLabel,
   statusLabel,
   type Locale,
@@ -524,6 +528,49 @@ export function AnalysisWorkspace({
         </article>
       </div>
 
+      <div className="coverage-register safety-register">
+        <div className="coverage-heading">
+          <div>
+            <p className="section-label">{copy.safetyLabel}</p>
+            <h3>{copy.safetyTitle}</h3>
+          </div>
+          <ShieldWarning aria-hidden="true" />
+        </div>
+        <div
+          className="table-scroll"
+          tabIndex={0}
+          role="region"
+          aria-label={copy.safetyRegionAria}
+        >
+          <table>
+            <caption>{copy.safetyCaption}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{copy.safetyProbe}</th>
+                <th scope="col">{copy.safetyState}</th>
+                <th scope="col">{copy.safetyEffect}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {PDF_SAFETY_PROBE_KEYS.map((probe) => {
+                const state = analysis.metadata.safetyInspection[probe];
+                return (
+                  <tr key={probe} data-probe-state={state}>
+                    <th scope="row">{safetyProbeLabel(probe, locale)}</th>
+                    <td>
+                      <span className={`coverage-state safety-state-${state}`}>
+                        {safetyStateLabel(state, locale)}
+                      </span>
+                    </td>
+                    <td>{safetyStateEffect(probe, state, locale)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div className="coverage-register">
         <div className="coverage-heading">
           <div>
@@ -751,11 +798,34 @@ function localizeHistoryNote(
 function localizeWorkspaceError(message: string, locale: Locale) {
   if (locale === "en") return message;
   const exactMessages: Record<string, string> = {
+    "Enter at least one metadata change.": "请至少填写一项元数据变更。",
+    "Keep the document title at 300 characters or fewer.": "文档标题不得超过 300 个字符。",
+    "Enter a valid BCP 47 language tag, such as en-US.": "请输入有效的 BCP 47 语言标签，例如 zh-CN。",
+    "The analysis record is incomplete, so restricted metadata revision was refused.":
+      "分析记录不完整，因此已拒绝受限元数据修订。",
+    "The analysis record contains an inconclusive page signal, so restricted metadata revision was refused.":
+      "分析记录包含无法确定的页面信号，因此已拒绝受限元数据修订。",
     "The target finding was still present after recheck, so the revision was discarded.":
       "重新检查后目标问题仍然存在，因此已丢弃该修订版。",
     "Page count changed during writeback.": "写回过程中页数发生变化，因此已丢弃该修订版。",
     "Protected text, structure, image, link, table, or form signals changed, so the revision was discarded.":
       "受保护的文本、结构、图像、链接、表格或表单信号发生变化，因此已丢弃该修订版。",
   };
-  return exactMessages[message] ?? `操作失败：${message}`;
+  if (exactMessages[message]) return exactMessages[message];
+
+  const unsafeFeature =
+    /^Restricted metadata revision is unavailable because strict preflight detected (.+)\. Preserve the original and escalate this PDF to a specialist\.$/.exec(
+      message,
+    );
+  if (unsafeFeature) {
+    return `严格安全预检检测到受限特征“${unsafeFeature[1]}”，因此无法创建受限元数据修订版。请保留原文件并升级给专业人员处理。`;
+  }
+
+  const ineligible =
+    /^The analysis is not eligible for restricted metadata revision: (.+)$/.exec(message);
+  if (ineligible) {
+    return `分析记录不符合受限元数据修订条件：${ineligible[1]}`;
+  }
+
+  return `操作失败：${message}`;
 }

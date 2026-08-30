@@ -14,6 +14,10 @@ import {
   localizeVersionRecord,
   pageCountLabel,
   pageLabel,
+  PDF_SAFETY_PROBE_KEYS,
+  safetyProbeLabel,
+  safetyStateEffect,
+  safetyStateLabel,
   severityLabel,
   statusLabel,
   type Locale,
@@ -129,6 +133,20 @@ export function renderEvidenceHtml(
       <ul class="limits">${analysis.limits.map((limit) => `<li>${escapeHtml(localizeAnalyzerLimit(limit, locale))}</li>`).join("")}</ul>
     </section>
 
+    <section aria-labelledby="safety-heading">
+      <h2 id="safety-heading">${escapeHtml(copy.safetyHeading)}</h2>
+      <table class="coverage safety-probes">
+        <caption>${escapeHtml(copy.safetyCaption)}</caption>
+        <thead><tr><th scope="col">${escapeHtml(copy.safetyProbe)}</th><th scope="col">${escapeHtml(copy.safetyState)}</th><th scope="col">${escapeHtml(copy.safetyEffect)}</th></tr></thead>
+        <tbody>
+          ${PDF_SAFETY_PROBE_KEYS.map((probe) => {
+            const state = analysis.metadata.safetyInspection[probe];
+            return `<tr data-probe-state="${escapeHtml(state)}"><th scope="row">${escapeHtml(safetyProbeLabel(probe, locale))}</th><td>${escapeHtml(safetyStateLabel(state, locale))}</td><td>${escapeHtml(safetyStateEffect(probe, state, locale))}</td></tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </section>
+
     <section aria-labelledby="coverage-heading">
       <h2 id="coverage-heading">${escapeHtml(copy.coverageHeading)}</h2>
       <table class="coverage">
@@ -222,8 +240,13 @@ function serializableAnalysis(analysis: PdfAnalysis, locale: Locale) {
 
 function localizedHistoryNote(entry: FindingHistoryEntry, locale: Locale) {
   if (locale === "en" || entry.actor === "reviewer") return entry.note;
-  return entry.note === "Created from the recorded analysis signal."
-    ? "根据已记录的分析信号创建。"
+  if (entry.note === "Created from the recorded analysis signal.") {
+    return "根据已记录的分析信号创建。";
+  }
+  const restrictedRevision =
+    /^Restricted metadata revision rechecked after writeback: (.*)$/.exec(entry.note);
+  return restrictedRevision
+    ? `受限元数据修订写回后已复查：${restrictedRevision[1]}`
     : entry.note;
 }
 
@@ -231,18 +254,7 @@ function localizedVersionRecord(
   version: PdfVersionRecord,
   locale: Locale,
 ): PdfVersionRecord {
-  const localized = localizeVersionRecord(version, locale);
-  if (locale === "en") return localized;
-  return {
-    ...localized,
-    changes: localized.changes.map((change) => {
-      if (change === "Set document Title and enabled DisplayDocTitle") {
-        return "设置文档标题并启用 DisplayDocTitle";
-      }
-      const language = /^Set document language to (.+)$/.exec(change);
-      return language ? `将文档语言设置为 ${language[1]}` : change;
-    }),
-  };
+  return localizeVersionRecord(version, locale);
 }
 
 function typedEntries<T extends string>(

@@ -3,7 +3,7 @@ import { expect, test, type Download, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import JSZip from "jszip";
-import { PDFDocument, StandardFonts } from "pdf-lib";
+import { PDFDocument, PDFName, StandardFonts } from "pdf-lib";
 
 function collectRuntimeErrors(page: Page) {
   const errors: string[] = [];
@@ -88,6 +88,13 @@ test("Chinese route, language switching, workspace state, and localized evidence
   ).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("机器检测到的问题", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /缺少文档标题元数据/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "分析器安全探测" })).toBeVisible();
+  await expect(
+    page.getByRole("row", {
+      name: /表单字段对象 未检测到 分析器未暴露此信号.*独立预检真实字节/,
+    }),
+  ).toBeVisible();
+  const sourceFingerprint = await page.locator(".workspace-meta code").textContent();
 
   await page.getByRole("link", { name: "English", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
@@ -96,24 +103,71 @@ test("Chinese route, language switching, workspace state, and localized evidence
     page.getByRole("heading", { level: 2, name: "known-accessibility-issues.pdf" }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /Document title metadata is missing/ })).toBeVisible();
+  await expect(page.locator(".workspace-meta code")).toHaveText(sourceFingerprint!);
 
   await page.getByRole("link", { name: "中文", exact: true }).click();
   await expect(page).toHaveURL(/\/zh$/);
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
   await expect(page.getByRole("button", { name: /缺少文档标题元数据/ })).toBeVisible();
+  await expect(page.locator(".workspace-meta code")).toHaveText(sourceFingerprint!);
 
   const evidenceDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "下载证据包" }).click();
   const evidence = await readEvidenceArchive(await evidenceDownloadPromise);
   expect(evidence.html).toContain('<html lang="zh-CN">');
   expect(evidence.html).toContain("本报告不是符合性证书");
+  expect(evidence.html).toContain("受限修订安全探测");
   expect(evidence.json).toMatchObject({
     reportLocale: "zh",
     fileName: "known-accessibility-issues.pdf",
     certificateOfConformance: false,
+    metadata: {
+      hasAcroForm: true,
+      safetyInspection: {
+        fieldObjects: "absent",
+      },
+    },
+    pages: [{ annotationCount: expect.any(Number) }],
   });
   expect(evidence.readme).toContain("不是符合性证书");
 
+  await expectNoAxeViolations(page);
+  expect(errors).toEqual([]);
+});
+
+test("Chinese restricted revision fails closed on a hidden raw-byte risk", async ({
+  page,
+}) => {
+  const errors = collectRuntimeErrors(page);
+  await page.goto("/zh", { waitUntil: "networkidle" });
+  const riskyPdf = await createMetadataPdfWithOutlines();
+  await page.getByLabel("选择或拖入 PDF").setInputFiles({
+    name: "hidden-outlines.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from(riskyPdf),
+  });
+  await page.getByRole("button", { name: "在本地分析" }).click();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "hidden-outlines.pdf" }),
+  ).toBeVisible({ timeout: 30_000 });
+
+  const sourceFingerprint = await page.locator(".workspace-meta code").textContent();
+  await page.getByRole("button", { name: /缺少文档标题元数据/ }).click();
+  await page.getByLabel("准确的文档标题").fill("不得写回的标题");
+  let downloadCount = 0;
+  page.on("download", () => {
+    downloadCount += 1;
+  });
+  await page.getByRole("button", { name: "创建并复查新版本" }).click();
+
+  await expect(
+    page.getByRole("alert").filter({
+      hasText: /严格安全预检检测到受限特征.*document outlines.*升级给专业人员/,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "1 个文件版本" })).toBeVisible();
+  await expect(page.locator(".workspace-meta code")).toHaveText(sourceFingerprint!);
+  await expect.poll(() => downloadCount).toBe(0);
   await expectNoAxeViolations(page);
   expect(errors).toEqual([]);
 });
@@ -222,6 +276,16 @@ async function createSafeMetadataPdf() {
     { x: 54, y: 720, size: 12, font, maxWidth: 500 },
   );
   return document.save({ useObjectStreams: false });
+}
+
+async function createMetadataPdfWithOutlines() {
+  const bytes = await createSafeMetadataPdf();
+  const document = await PDFDocument.load(bytes, { updateMetadata: false });
+  document.catalog.set(
+    PDFName.of("Outlines"),
+    document.context.obj({ Count: 0 }),
+  );
+  return document.save({ useObjectStreams: false, updateFieldAppearances: false });
 }
 
 async function readEvidenceArchive(download: Download) {
