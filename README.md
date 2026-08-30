@@ -13,7 +13,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. The default workflow processes the PDF in the browser; it has no upload API or server-side PDF store.
+Open `http://localhost:3000` for English or `http://localhost:3000/zh` for Simplified Chinese. The language switch preserves the active in-memory analysis and reviewer state. Evidence-pack labels follow the selected language, while file names, PDF-derived values, standard identifiers, and reviewer notes remain unchanged. The workflow processes the PDF in the browser; it has no upload API or server-side PDF store.
 
 Run the complete local gate with:
 

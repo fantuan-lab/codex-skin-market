@@ -10,6 +10,12 @@ import {
 } from "@phosphor-icons/react";
 import { useId, useRef, useState } from "react";
 import {
+  formatBytes,
+  getStandardProfileCopy,
+  getUiCopy,
+  type Locale,
+} from "@/lib/i18n";
+import {
   analyzePdf,
   MAX_FILE_BYTES,
   PdfAnalysisError,
@@ -24,7 +30,8 @@ import { AnalysisWorkspace } from "./Workspace";
 
 const DEFAULT_PROFILES: StandardProfileId[] = ["wcag21", "section508"];
 
-export function PdfExperience() {
+export function PdfExperience({ locale }: { locale: Locale }) {
+  const copy = getUiCopy(locale);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -54,11 +61,11 @@ export function PdfExperience() {
   const runAnalysis = async (selectedFile = file) => {
     if (!selectedFile) return;
     if (selectedFile.size > MAX_FILE_BYTES) {
-      setError("Choose a PDF no larger than 50 MB.");
+      setError(copy.intake.errors.tooLarge);
       return;
     }
     if (profiles.length === 0) {
-      setError("Choose at least one evidence mapping.");
+      setError(copy.intake.errors.noMapping);
       return;
     }
 
@@ -69,7 +76,7 @@ export function PdfExperience() {
     abortRef.current = controller;
     setIsAnalyzing(true);
     setError(null);
-    setProgress({ completedPages: 0, totalPages: 0, message: "Opening PDF" });
+    setProgress({ completedPages: 0, totalPages: 0, message: copy.intake.opening });
 
     try {
       const bytes = new Uint8Array(await selectedFile.arrayBuffer());
@@ -89,11 +96,7 @@ export function PdfExperience() {
       }, 0);
     } catch (caught) {
       if (requestRef.current !== requestId) return;
-      const message =
-        caught instanceof PdfAnalysisError || caught instanceof Error
-          ? caught.message
-          : "The PDF could not be analyzed.";
-      setError(message);
+      setError(localizeAnalysisError(caught, locale, copy.intake.errors.analyzeFailed));
     } finally {
       if (requestRef.current === requestId) {
         abortRef.current = null;
@@ -106,14 +109,16 @@ export function PdfExperience() {
     setError(null);
     try {
       const response = await fetch(path);
-      if (!response.ok) throw new Error("Sample file is unavailable.");
+      if (!response.ok) throw new Error(copy.intake.errors.unavailable);
       const sample = new File([await response.arrayBuffer()], name, {
         type: "application/pdf",
       });
       selectFile(sample);
       await runAnalysis(sample);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Sample file is unavailable.");
+      setError(
+        caught instanceof Error ? caught.message : copy.intake.errors.unavailable,
+      );
     }
   };
 
@@ -133,34 +138,21 @@ export function PdfExperience() {
       <section className="hero" id="top" aria-labelledby="hero-title">
         <div className="hero-copy">
           <p className="eyebrow">
-            <span aria-hidden="true" /> Guided PDF remediation
+            <span aria-hidden="true" /> {copy.hero.eyebrow}
           </p>
-          <h1 id="hero-title">
-            Turn accessibility findings into reviewable fixes and defensible
-            evidence.
-          </h1>
-          <p className="hero-lead">
-            Analyze text-based PDFs in your browser, locate structural risks by
-            page, guide human review, and export a versioned remediation evidence
-            pack.
-          </p>
-          <ul className="hero-points" aria-label="Product boundaries">
-            <li>
-              <CheckCircle weight="fill" aria-hidden="true" /> Machine-detected
-              failures stay separate from human verification.
-            </li>
-            <li>
-              <CheckCircle weight="fill" aria-hidden="true" /> Every finding keeps
-              its page, evidence, method, mapping, and status.
-            </li>
-            <li>
-              <CheckCircle weight="fill" aria-hidden="true" /> Complex tags,
-              tables, formulas, and forms escalate to specialists.
-            </li>
+          <h1 id="hero-title">{copy.hero.title}</h1>
+          <p className="hero-lead">{copy.hero.lead}</p>
+          <ul className="hero-points" aria-label={copy.hero.boundariesAria}>
+            {copy.hero.boundaries.map((boundary) => (
+              <li key={boundary}>
+                <CheckCircle weight="fill" aria-hidden="true" /> {boundary}
+              </li>
+            ))}
           </ul>
           <p className="boundary-note">
-            <ShieldCheck weight="duotone" aria-hidden="true" /> Guided
-            remediation—not one-click compliance.
+            <ShieldCheck weight="duotone" aria-hidden="true" />{
+              " "
+            }{copy.hero.boundaryNote}
           </p>
         </div>
 
@@ -168,11 +160,11 @@ export function PdfExperience() {
           <section className="intake-card" aria-labelledby="intake-title">
             <div className="intake-heading">
               <div>
-                <p className="card-kicker">Local analyzer</p>
-                <h2 id="intake-title">Review a PDF</h2>
+                <p className="card-kicker">{copy.intake.kicker}</p>
+                <h2 id="intake-title">{copy.intake.title}</h2>
               </div>
               <span className="privacy-chip">
-                <LockKey weight="bold" aria-hidden="true" /> In-browser
+                <LockKey weight="bold" aria-hidden="true" /> {copy.intake.privacyChip}
               </span>
             </div>
 
@@ -199,18 +191,19 @@ export function PdfExperience() {
               ) : (
                 <FileArrowUp weight="duotone" aria-hidden="true" />
               )}
-              <strong>{file ? file.name : "Choose or drop a PDF"}</strong>
+              <strong>{file ? file.name : copy.intake.chooseOrDrop}</strong>
               <span>
                 {file
-                  ? `${formatBytes(file.size)} selected`
-                  : "Text-based PDF · 1–100 pages · up to 50 MB"}
+                  ? `${formatBytes(file.size, locale)} ${copy.intake.selected}`
+                  : copy.intake.fileRequirements}
               </span>
-              <span className="file-button">Browse files</span>
+              <span className="file-button">{copy.intake.browse}</span>
             </label>
             <input
               ref={inputRef}
               id={inputId}
               className="visually-hidden"
+              data-testid="pdf-file-input"
               type="file"
               accept="application/pdf,.pdf"
               disabled={isAnalyzing}
@@ -227,53 +220,56 @@ export function PdfExperience() {
                   if (inputRef.current) inputRef.current.value = "";
                 }}
               >
-                <X aria-hidden="true" /> Remove selected file
+                <X aria-hidden="true" /> {copy.intake.remove}
               </button>
             ) : null}
 
             <fieldset className="profile-fieldset">
-              <legend>Evidence mapping</legend>
+              <legend>{copy.intake.mappingLegend}</legend>
               <div className="profile-options">
-                {STANDARD_PROFILES.map((profile) => (
-                  <label key={profile.id}>
-                    <input
-                      type="checkbox"
-                      checked={profiles.includes(profile.id)}
-                      disabled={isAnalyzing}
-                      onChange={() =>
-                        setProfiles((current) =>
-                          current.includes(profile.id)
-                            ? current.filter((id) => id !== profile.id)
-                            : [...current, profile.id],
-                        )
-                      }
-                    />
-                    <span>
-                      <strong>{profile.shortName}</strong>
-                      <small>{profile.scopeNote}</small>
-                    </span>
-                  </label>
-                ))}
+                {STANDARD_PROFILES.map((profile) => {
+                  const profileCopy = getStandardProfileCopy(profile.id, locale);
+                  return (
+                    <label key={profile.id}>
+                      <input
+                        type="checkbox"
+                        checked={profiles.includes(profile.id)}
+                        disabled={isAnalyzing}
+                        onChange={() =>
+                          setProfiles((current) =>
+                            current.includes(profile.id)
+                              ? current.filter((id) => id !== profile.id)
+                              : [...current, profile.id],
+                          )
+                        }
+                      />
+                      <span>
+                        <strong>{profileCopy.shortName}</strong>
+                        <small>{profileCopy.scopeNote}</small>
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             </fieldset>
 
             {isAnalyzing && progress ? (
               <div className="analysis-progress" aria-live="polite">
                 <div>
-                  <span>{progress.message}</span>
+                  <span>{localizeProgress(progress, locale, copy.intake.opening)}</span>
                   <span>
                     {progress.totalPages
                       ? `${progress.completedPages}/${progress.totalPages}`
-                      : "Starting"}
+                      : copy.intake.starting}
                   </span>
                 </div>
                 <progress
-                  aria-label="PDF analysis progress"
+                  aria-label={copy.intake.progressAria}
                   max={progress.totalPages || 1}
                   value={progress.completedPages}
                 />
                 <button type="button" onClick={() => abortRef.current?.abort()}>
-                  Cancel analysis
+                  {copy.intake.cancel}
                 </button>
               </div>
             ) : (
@@ -283,7 +279,7 @@ export function PdfExperience() {
                 disabled={!file}
                 onClick={() => void runAnalysis()}
               >
-                Analyze locally
+                {copy.intake.analyze}
               </button>
             )}
 
@@ -292,12 +288,9 @@ export function PdfExperience() {
                 {error}
               </p>
             ) : null}
-            <p className="intake-disclaimer">
-              Files and extracted content stay in this tab. No PDF text, field
-              values, or link targets are logged or uploaded.
-            </p>
-            <div className="sample-actions" aria-label="Test with sample PDFs">
-              <span>Try a real fixture:</span>
+            <p className="intake-disclaimer">{copy.intake.privacy}</p>
+            <div className="sample-actions" aria-label={copy.intake.samplesAria}>
+              <span>{copy.intake.samplesLead}</span>
               <button
                 type="button"
                 disabled={isAnalyzing}
@@ -308,7 +301,7 @@ export function PdfExperience() {
                   )
                 }
               >
-                Well-tagged sample
+                {copy.intake.taggedSample}
               </button>
               <button
                 type="button"
@@ -320,7 +313,7 @@ export function PdfExperience() {
                   )
                 }
               >
-                Known-issues sample
+                {copy.intake.issuesSample}
               </button>
             </div>
           </section>
@@ -330,6 +323,7 @@ export function PdfExperience() {
       {analysis && sourceBytes ? (
         <AnalysisWorkspace
           key={analysis.fingerprint}
+          locale={locale}
           initialAnalysis={analysis}
           initialBytes={sourceBytes}
           onReset={reset}
@@ -339,8 +333,37 @@ export function PdfExperience() {
   );
 }
 
-function formatBytes(bytes: number) {
-  return bytes < 1024 * 1024
-    ? `${Math.max(1, Math.round(bytes / 1024))} KB`
-    : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+function localizeProgress(
+  progress: AnalysisProgress,
+  locale: Locale,
+  opening: string,
+): string {
+  if (locale === "en") return progress.message;
+  if (progress.message === "Opening PDF") return opening;
+  if (progress.message === "Reading document metadata") return "正在读取文档元数据";
+  const pageProgress = /^Analyzed page (\d+) of (\d+)$/.exec(progress.message);
+  return pageProgress
+    ? `已分析第 ${pageProgress[1]} 页，共 ${pageProgress[2]} 页`
+    : progress.message;
+}
+
+function localizeAnalysisError(
+  caught: unknown,
+  locale: Locale,
+  fallback: string,
+): string {
+  if (!(caught instanceof PdfAnalysisError)) {
+    return caught instanceof Error ? caught.message : fallback;
+  }
+  if (locale === "en") return caught.message;
+  const messages: Record<PdfAnalysisError["code"], string> = {
+    "file-too-large": "请选择不超过 50 MB 的 PDF。",
+    "not-pdf": "所选文件不包含有效的 PDF 文件头。",
+    "page-limit": "此 MVP 仅支持 1–100 页的 PDF。",
+    password: "此 PDF 受密码保护。请先在获批流程中移除密码，再进行分析。",
+    cancelled: "分析已取消，未保留文件数据。",
+    "analysis-budget": "此 PDF 超出 MVP 的分析安全预算，请升级到受控桌面流程处理。",
+    "parse-error": "无法将此文件解析为受支持的 PDF。",
+  };
+  return messages[caught.code];
 }
