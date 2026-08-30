@@ -64,7 +64,9 @@ test("server-renders the English ClearTag landing page and local analyzer", asyn
   assert.match(html, /Not yet offered/);
   assert.match(html, /See the issue\. Record the judgment\. Deliver the evidence\./);
   assert.match(html, /src="\/landing\/standards-books\.png"/i);
+  assert.match(html, /src="\/landing\/cta-desk\.png"/i);
   assert.match(html, /Footer navigation/);
+  assert.match(html, /Mobile section navigation/);
   assert.match(html, /Skip to main content/);
   assertLandingOrder(html);
   assertBrandIcons(html);
@@ -97,6 +99,7 @@ test("server-renders a complete Chinese route with the correct document language
   assert.match(html, /看见问题，记录判断，交付证据/);
   assert.match(html, /src="\/landing\/standards-books\.png"/i);
   assert.match(html, /aria-label="页脚导航"/);
+  assert.match(html, /aria-label="移动端章节导航"/);
   assertLandingOrder(html);
   assertBrandIcons(html);
   assert.doesNotMatch(html, /一键(?:实现|完成)合规|自动获得认证|保证所有 PDF 符合|100% 合规/i);

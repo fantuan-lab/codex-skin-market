@@ -202,6 +202,16 @@ export function PdfExperience({
               <span>{copy.hero.preview.selectedFinding}</span>
               <h2>{copy.hero.preview.title}</h2>
               <p>{copy.hero.preview.copy}</p>
+              <dl className="preview-evidence">
+                <div>
+                  <dt>{copy.hero.preview.locationLabel}</dt>
+                  <dd>{copy.hero.preview.location}</dd>
+                </div>
+                <div>
+                  <dt>{copy.hero.preview.methodLabel}</dt>
+                  <dd>{copy.hero.preview.method}</dd>
+                </div>
+              </dl>
               <strong>
                 <CheckCircle weight="fill" aria-hidden="true" />
                 {copy.hero.preview.reviewer}

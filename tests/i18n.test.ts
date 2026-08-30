@@ -56,8 +56,12 @@ describe("bilingual UI copy", () => {
     expect(chinese.hero.title).toContain("可复核的修复");
     expect(english.hero.boundaryNote).toContain("not one-click compliance");
     expect(chinese.hero.boundaryNote).toContain("不承诺一键合规");
-    expect(english.hero.primaryAction).toBe("Analyze a PDF");
-    expect(chinese.hero.primaryAction).toBe("分析一份 PDF");
+    expect(english.hero.primaryAction).toBe("Analyze locally");
+    expect(chinese.hero.primaryAction).toBe("在浏览器中分析 PDF");
+    expect(english.navigation.mobileAria).toBe("Mobile section navigation");
+    expect(chinese.navigation.openAnalyzerShort).toBe("分析");
+    expect(english.hero.preview.location).toContain("Page 12");
+    expect(chinese.hero.preview.method).toBe("批注与结构检查");
     expect(english.hero.preview.label).toBe("Illustrative UI example · not scan output");
     expect(english.hero.preview.fileName).not.toBe("known-accessibility-issues.pdf");
     expect(english.productProof.fixtureLabel).toContain("not scan output");

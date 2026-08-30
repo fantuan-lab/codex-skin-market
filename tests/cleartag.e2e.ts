@@ -50,7 +50,7 @@ test("landing page is meaningful, keyboard reachable, responsive, and axe-clean"
     }),
   ).toBeVisible();
   await expect(page.locator(".standards-illustration")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Analyze a PDF", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Analyze locally", exact: true })).toHaveAttribute(
     "href",
     "#analyzer",
   );
@@ -78,6 +78,12 @@ test("landing page is meaningful, keyboard reachable, responsive, and axe-clean"
   expect(errors).toEqual([]);
 
   await page.screenshot({ path: "test-results/cleartag-landing-viewport.png" });
+  for (const selector of [".standards-illustration", ".final-boundary-asset"]) {
+    const image = page.locator(selector);
+    await image.scrollIntoViewIfNeeded();
+    await image.evaluate((node: HTMLImageElement) => node.decode());
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: "test-results/cleartag-landing.png", fullPage: true });
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
@@ -90,7 +96,10 @@ test("landing page is meaningful, keyboard reachable, responsive, and axe-clean"
   }));
   expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
   await expect(
-    page.getByRole("banner").getByRole("link", { name: "Open analyzer", exact: true }),
+    page.getByRole("banner").getByRole("link", { name: "Open local analyzer", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Mobile section navigation" }),
   ).toBeVisible();
   await expectNoAxeViolations(page);
   await page.screenshot({ path: "test-results/cleartag-mobile.png", fullPage: true });
@@ -102,6 +111,8 @@ test("landing page is meaningful, keyboard reachable, responsive, and axe-clean"
     client: document.documentElement.clientWidth,
   }));
   expect(narrowWidths.scroll).toBeLessThanOrEqual(narrowWidths.client + 1);
+  await expect(page.locator(".header-cta-short")).toHaveText("Analyze");
+  await expect(page.locator(".header-cta-short")).toBeVisible();
 });
 
 test("Chinese route, language switching, workspace state, and localized evidence stay accessible", async ({

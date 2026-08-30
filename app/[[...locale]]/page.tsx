@@ -220,7 +220,7 @@ export default async function Home({
             width={720}
             height={420}
             alt={copy.standards.illustrationAlt}
-            loading="eager"
+            loading="lazy"
           />
           <div className="standards-list">
             {copy.standards.cards.map((card, index) => (
@@ -290,6 +290,18 @@ export default async function Home({
       </section>
 
       <section className="final-boundary" aria-labelledby="final-boundary-title">
+        {/* Vinext serves this static asset directly; its image optimizer is not available locally. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          className="final-boundary-asset"
+          src="/landing/cta-desk.png"
+          width={900}
+          height={300}
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+        />
         <FilePdf weight="duotone" aria-hidden="true" />
         <p className="section-label light-label">{copy.finalBoundary.label}</p>
         <h2 id="final-boundary-title">{copy.finalBoundary.title}</h2>

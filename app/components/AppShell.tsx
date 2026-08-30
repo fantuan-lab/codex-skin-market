@@ -75,11 +75,27 @@ export function AppShell({
               {copy.locale.chinese}
             </Link>
           </nav>
-          <a className="header-cta" href="#analyzer">
-            {copy.navigation.openAnalyzer} <ArrowRight aria-hidden="true" />
+          <a
+            className="header-cta"
+            href="#analyzer"
+            aria-label={copy.navigation.openAnalyzer}
+          >
+            <span className="header-cta-label">{copy.navigation.openAnalyzer}</span>
+            <span className="header-cta-short" aria-hidden="true">
+              {copy.navigation.openAnalyzerShort}
+            </span>
+            <ArrowRight aria-hidden="true" />
           </a>
         </div>
       </header>
+
+      <nav className="mobile-section-nav" aria-label={copy.navigation.mobileAria}>
+        <a href="#workflow">{copy.navigation.workflow}</a>
+        <a href="#standards">{copy.navigation.standards}</a>
+        <a href="#security">{copy.navigation.security}</a>
+        <a href="#pricing">{copy.navigation.pricing}</a>
+        <a href="#analyzer">{copy.navigation.openAnalyzerShort}</a>
+      </nav>
 
       <main id="main-content">
         <PdfExperience locale={locale}>{children}</PdfExperience>
