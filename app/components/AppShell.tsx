@@ -1,32 +1,18 @@
-"use client";
-
-import { ArrowRight, LockKey, Tag } from "@phosphor-icons/react";
+import { ArrowRight, LockKey, Tag } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect } from "react";
+import type { ReactNode } from "react";
 import { getUiCopy, type Locale } from "@/lib/i18n";
-import { PdfExperience } from "./PdfExperience";
-
-function localeFromPathname(pathname: string, fallback: Locale): Locale {
-  if (pathname === "/zh" || pathname.startsWith("/zh/")) return "zh";
-  if (pathname === "/") return "en";
-  return fallback;
-}
 
 export function AppShell({
   children,
-  initialLocale,
+  locale,
 }: Readonly<{
   children: ReactNode;
-  initialLocale: Locale;
+  locale: Locale;
 }>) {
-  const pathname = usePathname();
-  const locale = localeFromPathname(pathname, initialLocale);
   const copy = getUiCopy(locale);
-
-  useEffect(() => {
-    document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
-  }, [locale]);
+  const landingHref = locale === "zh" ? "/zh" : "/";
+  const workspaceHref = locale === "zh" ? "/zh/workspace" : "/workspace";
 
   return (
     <div className="site-shell">
@@ -35,7 +21,11 @@ export function AppShell({
       </a>
 
       <header className="topbar">
-        <a className="brand" href="#top" aria-label={copy.navigation.brandAria}>
+        <Link
+          className="brand"
+          href={`${landingHref}#top`}
+          aria-label={copy.navigation.brandAria}
+        >
           <span className="brand-mark" aria-hidden="true">
             <Tag weight="fill" />
           </span>
@@ -43,7 +33,7 @@ export function AppShell({
             <strong>ClearTag</strong>
             <small>{copy.navigation.tagline}</small>
           </span>
-        </a>
+        </Link>
 
         <nav aria-label={copy.navigation.primaryAria}>
           <a href="#workflow">{copy.navigation.workflow}</a>
@@ -75,9 +65,9 @@ export function AppShell({
               {copy.locale.chinese}
             </Link>
           </nav>
-          <a
+          <Link
             className="header-cta"
-            href="#analyzer"
+            href={workspaceHref}
             aria-label={copy.navigation.openAnalyzer}
           >
             <span className="header-cta-label">{copy.navigation.openAnalyzer}</span>
@@ -85,7 +75,7 @@ export function AppShell({
               {copy.navigation.openAnalyzerShort}
             </span>
             <ArrowRight aria-hidden="true" />
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -94,11 +84,11 @@ export function AppShell({
         <a href="#standards">{copy.navigation.standards}</a>
         <a href="#security">{copy.navigation.security}</a>
         <a href="#pricing">{copy.navigation.pricing}</a>
-        <a href="#analyzer">{copy.navigation.openAnalyzerShort}</a>
+        <Link href={workspaceHref}>{copy.navigation.openAnalyzerShort}</Link>
       </nav>
 
       <main id="main-content">
-        <PdfExperience locale={locale}>{children}</PdfExperience>
+        {children}
       </main>
 
       <footer className="site-footer">

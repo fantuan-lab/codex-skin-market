@@ -1,17 +1,13 @@
 "use client";
 
 import {
-  ArrowRight,
-  CheckCircle,
   FileArrowUp,
   FilePdf,
-  Fingerprint,
   LockKey,
   ShieldCheck,
-  UserFocus,
   X,
 } from "@phosphor-icons/react";
-import { type ReactNode, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import {
   formatBytes,
   getStandardProfileCopy,
@@ -33,13 +29,7 @@ import { AnalysisWorkspace } from "./Workspace";
 
 const DEFAULT_PROFILES: StandardProfileId[] = ["wcag21", "section508"];
 
-export function PdfExperience({
-  children,
-  locale,
-}: {
-  children: ReactNode;
-  locale: Locale;
-}) {
+export function PdfExperience({ locale }: Readonly<{ locale: Locale }>) {
   const copy = getUiCopy(locale);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -144,89 +134,6 @@ export function PdfExperience({
 
   return (
     <>
-      <section className="hero" id="top" aria-labelledby="hero-title">
-        <div className="hero-copy">
-          <p className="eyebrow">
-            <span aria-hidden="true" /> {copy.hero.eyebrow}
-          </p>
-          <h1 id="hero-title">{copy.hero.title}</h1>
-          <p className="hero-lead">{copy.hero.lead}</p>
-          <div className="hero-actions">
-            <a className="hero-primary-action" href="#analyzer">
-              {copy.hero.primaryAction} <ArrowRight aria-hidden="true" />
-            </a>
-            <a className="hero-secondary-action" href="#workflow">
-              {copy.hero.secondaryAction} <ArrowRight aria-hidden="true" />
-            </a>
-          </div>
-          <ul className="hero-points" aria-label={copy.hero.boundariesAria}>
-            {copy.hero.boundaries.map((boundary) => (
-              <li key={boundary}>
-                <CheckCircle weight="fill" aria-hidden="true" /> {boundary}
-              </li>
-            ))}
-          </ul>
-          <p className="boundary-note">
-            <ShieldCheck weight="duotone" aria-hidden="true" />{
-              " "
-            }{copy.hero.boundaryNote}
-          </p>
-        </div>
-
-        <aside className="hero-preview" aria-label={copy.hero.preview.aria}>
-          <div className="preview-topline">
-            <span>{copy.hero.preview.label}</span>
-            <span>{copy.hero.preview.pageCount}</span>
-          </div>
-          <div className="preview-document">
-            <FilePdf weight="duotone" aria-hidden="true" />
-            <strong>{copy.hero.preview.fileName}</strong>
-          </div>
-          <div className="preview-body">
-            <div className="preview-queue" aria-label={copy.hero.preview.aria}>
-              {copy.hero.preview.rows.map((row, index) => (
-                <div className={index === 0 ? "is-selected" : undefined} key={row.label}>
-                  {index === 0 ? (
-                    <CheckCircle weight="fill" aria-hidden="true" />
-                  ) : (
-                    <UserFocus weight="duotone" aria-hidden="true" />
-                  )}
-                  <span>
-                    <strong>{row.label}</strong>
-                    <small>{row.status}</small>
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="preview-detail">
-              <span>{copy.hero.preview.selectedFinding}</span>
-              <h2>{copy.hero.preview.title}</h2>
-              <p>{copy.hero.preview.copy}</p>
-              <dl className="preview-evidence">
-                <div>
-                  <dt>{copy.hero.preview.locationLabel}</dt>
-                  <dd>{copy.hero.preview.location}</dd>
-                </div>
-                <div>
-                  <dt>{copy.hero.preview.methodLabel}</dt>
-                  <dd>{copy.hero.preview.method}</dd>
-                </div>
-              </dl>
-              <strong>
-                <CheckCircle weight="fill" aria-hidden="true" />
-                {copy.hero.preview.reviewer}
-              </strong>
-            </div>
-          </div>
-          <div className="preview-footer">
-            <Fingerprint aria-hidden="true" />
-            <span>{copy.hero.preview.fingerprint}</span>
-          </div>
-        </aside>
-      </section>
-
-      {children}
-
       <section id="analyzer" className="analyzer-section" aria-labelledby="analyzer-title">
         <div className="analyzer-intro">
           <p className="section-label">{copy.intake.sectionLabel}</p>

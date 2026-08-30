@@ -13,7 +13,30 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000` for English or `http://localhost:3000/zh` for Simplified Chinese. The language switch preserves the active in-memory analysis and reviewer state. Evidence-pack labels follow the selected language, while file names, PDF-derived values, standard identifiers, and reviewer notes remain unchanged. The workflow processes the PDF in the browser; it has no upload API or server-side PDF store.
+Open `http://localhost:3000` for English or `http://localhost:3000/zh` for Simplified Chinese. Authenticated workspaces use `/workspace` and `/zh/workspace`. Change language before selecting a PDF because moving between language-specific workspace routes clears the current in-memory file and review state. Evidence-pack labels follow the selected language, while file names, PDF-derived values, standard identifiers, and reviewer notes remain unchanged. The workflow processes the PDF in the browser; it has no upload API or server-side PDF store.
+
+The marketing pages stay public. PDF analysis is available after application sign-in at `/workspace` or `/zh/workspace`; authentication does not upload the selected PDF or its extracted content.
+
+## Authentication setup
+
+ClearTag uses Supabase Auth with email/password and Google OAuth. Copy `.env.example` to `.env.local` and provide a project URL plus a publishable key:
+
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=https://PROJECT_REF.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_REPLACE_ME
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+Never expose a Supabase secret key, legacy `service_role` key, or Google client secret through a `NEXT_PUBLIC_` variable. The site deliberately fails closed when the public Auth configuration is absent: the landing page remains readable, but sign-in is unavailable and the workspace stays protected.
+
+In Supabase Auth configuration:
+
+- Keep email confirmation enabled and configure production SMTP before accepting real users; Supabase's default SMTP is for limited testing, not production delivery.
+- Add the local and production site URLs to the redirect allow list, including `/auth/callback`.
+- Enable Google using a Web OAuth client. Google Cloud's authorized redirect URI is the Supabase callback `https://PROJECT_REF.supabase.co/auth/v1/callback`; the Google client secret stays in Supabase, not in this repository.
+- Request only the basic OpenID, email, and profile scopes. ClearTag does not request Google Drive or Gmail access.
+
+Supabase stores limited account, identity, session, and authentication-security data. PDF bytes, extracted PDF text, findings, and reviewer notes remain in the current browser tab unless the reviewer explicitly downloads an evidence pack.
 
 Run the complete local gate with:
 

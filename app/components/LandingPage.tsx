@@ -15,10 +15,10 @@ import {
   UserFocus,
   WarningCircle,
 } from "@phosphor-icons/react/dist/ssr";
-import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getUiCopy, type Locale } from "@/lib/i18n";
-
-type LocaleParams = { locale?: string[] };
+import { AppShell } from "./AppShell";
+import { LandingHero } from "./LandingHero";
 
 const audienceIcons = [Handshake, GraduationCap, Buildings, Files];
 const workflowIcons = [FilePdf, UserFocus, ArrowsClockwise];
@@ -30,26 +30,13 @@ const standardLinks = [
   "https://eur-lex.europa.eu/eli/dir/2019/882/oj/eng",
 ];
 
-export const dynamicParams = false;
-
-export function generateStaticParams(): LocaleParams[] {
-  return [{ locale: [] }, { locale: ["zh"] }];
-}
-
-function resolveLocale({ locale }: LocaleParams): Locale {
-  if (!locale || locale.length === 0) return "en";
-  if (locale.length === 1 && locale[0] === "zh") return "zh";
-  notFound();
-}
-
-export default async function Home({
-  params,
-}: Readonly<{ params: Promise<LocaleParams> }>) {
-  const locale = resolveLocale(await params);
+export function LandingPage({ locale }: Readonly<{ locale: Locale }>) {
   const copy = getUiCopy(locale);
+  const workspaceHref = locale === "zh" ? "/zh/workspace" : "/workspace";
 
   return (
-    <>
+    <AppShell locale={locale}>
+      <LandingHero locale={locale} workspaceHref={workspaceHref} />
       <section className="confidence-strip" aria-label={copy.confidence.aria}>
         {copy.confidence.items.map((item) => (
           <div key={item.value}>
@@ -280,7 +267,7 @@ export default async function Home({
               <strong>{card.price}</strong>
               <p>{card.copy}</p>
               {index === 0 ? (
-                <a href="#analyzer">{card.action}</a>
+                <Link href={workspaceHref}>{card.action}</Link>
               ) : (
                 <span className="disabled-link">{card.action}</span>
               )}
@@ -306,10 +293,10 @@ export default async function Home({
         <p className="section-label light-label">{copy.finalBoundary.label}</p>
         <h2 id="final-boundary-title">{copy.finalBoundary.title}</h2>
         <p>{copy.finalBoundary.copy}</p>
-        <a href="#analyzer">
+        <Link href={workspaceHref}>
           {copy.finalBoundary.action} <ArrowRight aria-hidden="true" />
-        </a>
+        </Link>
       </section>
-    </>
+    </AppShell>
   );
 }
