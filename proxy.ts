@@ -2,9 +2,10 @@ import { createServerClient } from "@supabase/ssr";
 import type { CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { isProtectedPath, loginPathFor } from "@/lib/auth/paths";
+import { isLoginPath, isProtectedPath, loginPathFor } from "@/lib/auth/paths";
 import { applyPrivateNoStore } from "@/lib/auth/response";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
+import { requestUsesHttps } from "@/lib/supabase/protocol";
 
 type PendingCookie = {
   name: string;
@@ -14,17 +15,30 @@ type PendingCookie = {
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`;
-  if (!isProtectedPath(request.nextUrl.pathname)) {
+  const isProtected = isProtectedPath(request.nextUrl.pathname);
+  const isLogin = isLoginPath(request.nextUrl.pathname);
+  if (!isProtected && !isLogin) {
     return NextResponse.next({ request });
   }
 
-  const config = getSupabasePublicConfig();
-  if (!config) return protectedLoginRedirect(request, returnTo);
+  const config = getSupabasePublicConfig({
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  });
+  if (!config) {
+    return isProtected
+      ? protectedLoginRedirect(request, returnTo)
+      : applyPrivateNoStore(NextResponse.next({ request }));
+  }
 
   const pendingCookies: PendingCookie[] = [];
   const responseHeaders = new Headers();
 
   const supabase = createServerClient(config.url, config.publishableKey, {
+    cookieOptions: {
+      secure: requestUsesHttps(request.nextUrl.protocol, request.headers),
+    },
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(cookiesToSet, headersToSet) {
@@ -47,7 +61,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     authenticated = false;
   }
 
-  const response = authenticated
+  const response = authenticated || isLogin
     ? NextResponse.next({ request })
     : NextResponse.redirect(
         new URL(loginPathFor(returnTo), request.url),
@@ -59,7 +73,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ["/workspace/:path*", "/zh/workspace/:path*"],
+  matcher: ["/login", "/zh/login", "/workspace/:path*", "/zh/workspace/:path*"],
 };
 
 function protectedLoginRedirect(

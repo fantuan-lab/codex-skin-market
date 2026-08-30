@@ -16,6 +16,10 @@ const supabaseMock = vi.hoisted(() => ({
   exchangeCalls: [] as string[],
   writeCookiesOnClaims: false,
   writeCookiesOnExchange: false,
+  cookieOptionsSeen: [] as Array<{
+    secure?: boolean;
+    sameSite?: "lax" | "strict" | "none";
+  }>,
 }));
 
 vi.mock("@supabase/ssr", () => ({
@@ -25,12 +29,21 @@ vi.mock("@supabase/ssr", () => ({
       _url: string,
       _key: string,
       options: {
+        cookieOptions?: {
+          secure?: boolean;
+          sameSite?: "lax" | "strict" | "none";
+        };
         cookies: {
           setAll?: (
             cookies: Array<{
               name: string;
               value: string;
-              options: { httpOnly?: boolean; path?: string };
+              options: {
+                httpOnly?: boolean;
+                path?: string;
+                sameSite?: "lax" | "strict" | "none";
+                secure?: boolean;
+              };
             }>,
             headers: Record<string, string>,
           ) => void | Promise<void>;
@@ -38,13 +51,18 @@ vi.mock("@supabase/ssr", () => ({
       },
     ) => {
       supabaseMock.clientsCreated += 1;
+      supabaseMock.cookieOptionsSeen.push(options.cookieOptions ?? {});
       const writeRefresh = async () => {
         await options.cookies.setAll?.(
           [
             {
               name: "sb-refresh",
               value: "new-token",
-              options: { httpOnly: true, path: "/" },
+              options: {
+                httpOnly: true,
+                path: "/",
+                ...options.cookieOptions,
+              },
             },
           ],
           {
@@ -87,6 +105,7 @@ import {
   requireSupabasePublicConfig,
   SupabaseConfigurationError,
 } from "@/lib/supabase/config";
+import { requestUsesHttps } from "@/lib/supabase/protocol";
 import { GET as authCallback } from "@/app/auth/callback/route";
 import { proxy } from "@/proxy";
 
@@ -219,10 +238,26 @@ describe("public Supabase configuration", () => {
   });
 });
 
+describe("authentication cookie protocol policy", () => {
+  it.each([
+    ["https:", {}, true],
+    ["http:", {}, false],
+    [undefined, { "x-forwarded-proto": "https" }, true],
+    ["http:", { "x-forwarded-proto": "https,http" }, true],
+    [undefined, { "cf-visitor": '{"scheme":"https"}' }, true],
+    [undefined, { "cf-visitor": "invalid" }, false],
+  ])(
+    "uses protocol %s and headers %# => Secure=%s",
+    (protocol, values, expected) => {
+      expect(requestUsesHttps(protocol, new Headers(values))).toBe(expected);
+    },
+  );
+});
+
 describe("protected-route proxy", () => {
   beforeEach(resetAuthState);
 
-  it.each(["/", "/zh", "/login", "/zh/login", "/auth/callback"])(
+  it.each(["/", "/zh", "/auth/callback"])(
     "does not authenticate public route %s",
     async (pathname) => {
       const response = await proxy(request(pathname));
@@ -265,6 +300,45 @@ describe("protected-route proxy", () => {
     expect(response.headers.get("set-cookie")).toContain("sb-refresh=new-token");
     expectPrivateNoStore(response);
   });
+
+  it.each(["/login", "/zh/login"])(
+    "propagates a refreshed session cookie through login entry %s",
+    async (pathname) => {
+      configure();
+      supabaseMock.writeCookiesOnClaims = true;
+
+      const response = await proxy(request(pathname));
+
+      expect([200, 303]).toContain(response.status);
+      expect(response.headers.get("set-cookie")).toContain(
+        "sb-refresh=new-token",
+      );
+      expect(response.headers.get("x-auth-refresh")).toBe("propagated");
+      expectPrivateNoStore(response);
+      expect(supabaseMock.clientsCreated).toBe(1);
+    },
+  );
+
+  it.each([
+    ["https://cleartag.example", true],
+    ["http://localhost:43172", false],
+  ])(
+    "sets Secure=%s for refreshed cookies served from %s",
+    async (origin, expectedSecure) => {
+      configure();
+      supabaseMock.writeCookiesOnClaims = true;
+
+      const response = await proxy(request("/workspace", origin));
+      const setCookie = response.headers.get("set-cookie") ?? "";
+
+      expect(/(?:^|;\s*)Secure(?:;|$)/i.test(setCookie)).toBe(
+        expectedSecure,
+      );
+      expect(supabaseMock.cookieOptionsSeen.at(-1)?.secure).toBe(
+        expectedSecure,
+      );
+    },
+  );
 
   it.each(["missing claims", "claims error", "claims exception"])(
     "redirects when authentication has %s",
@@ -341,6 +415,32 @@ describe("OAuth callback", () => {
     expectPrivateNoStore(response);
   });
 
+  it.each([
+    ["https://cleartag.example", true],
+    ["http://localhost:43172", false],
+  ])(
+    "sets Secure=%s on callback session cookies served from %s",
+    async (origin, expectedSecure) => {
+      configure();
+      supabaseMock.writeCookiesOnExchange = true;
+
+      const response = await authCallback(
+        request(
+          "/auth/callback?code=oauth-code&returnTo=%2Fworkspace",
+          origin,
+        ),
+      );
+      const setCookie = response.headers.get("set-cookie") ?? "";
+
+      expect(/(?:^|;\s*)Secure(?:;|$)/i.test(setCookie)).toBe(
+        expectedSecure,
+      );
+      expect(supabaseMock.cookieOptionsSeen.at(-1)?.secure).toBe(
+        expectedSecure,
+      );
+    },
+  );
+
   it.each(["missing code", "missing configuration", "exchange error", "exchange exception"])(
     "fails closed for %s",
     async (failure) => {
@@ -371,8 +471,11 @@ afterAll(() => {
   restoreEnvironment("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", originalKey);
 });
 
-function request(pathname: string): NextRequest {
-  return new NextRequest(new URL(pathname, "https://cleartag.test"));
+function request(
+  pathname: string,
+  origin = "https://cleartag.test",
+): NextRequest {
+  return new NextRequest(new URL(pathname, origin));
 }
 
 function configure(): void {
@@ -398,6 +501,7 @@ function resetAuthState(): void {
   supabaseMock.exchangeCalls = [];
   supabaseMock.writeCookiesOnClaims = false;
   supabaseMock.writeCookiesOnExchange = false;
+  supabaseMock.cookieOptionsSeen = [];
 }
 
 function expectPrivateNoStore(response: Response): void {

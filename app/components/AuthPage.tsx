@@ -10,17 +10,78 @@ import { safeReturnPath } from "@/lib/auth/paths";
 import { getUiCopy, type Locale } from "@/lib/i18n";
 import { AuthForm } from "./AuthForm";
 
-function loginHref(locale: Locale, next: string): string {
+type CallbackErrorCode =
+  | "access_denied"
+  | "exchange_failed"
+  | "missing_code"
+  | "not_configured";
+
+function loginHref(
+  locale: Locale,
+  next: string,
+  error?: CallbackErrorCode,
+): string {
   const pathname = locale === "zh" ? "/zh/login" : "/login";
-  return `${pathname}?returnTo=${encodeURIComponent(next)}`;
+  const params = new URLSearchParams({ returnTo: next });
+  if (error) params.set("error", error);
+  return `${pathname}?${params.toString()}`;
+}
+
+function normalizeCallbackError(value: string | undefined): CallbackErrorCode | undefined {
+  switch (value) {
+    case "access_denied":
+    case "exchange_failed":
+    case "missing_code":
+    case "not_configured":
+      return value;
+    default:
+      return undefined;
+  }
+}
+
+function localizedWorkspacePath(next: string, targetLocale: Locale): string {
+  const sourceRoot = targetLocale === "zh" ? "/workspace" : "/zh/workspace";
+  const targetRoot = targetLocale === "zh" ? "/zh/workspace" : "/workspace";
+  const alreadyLocalizedRoot = targetRoot;
+
+  if (matchesWorkspaceRoot(next, sourceRoot)) {
+    return safeReturnPath(`${targetRoot}${next.slice(sourceRoot.length)}`, targetRoot);
+  }
+  if (matchesWorkspaceRoot(next, alreadyLocalizedRoot)) {
+    return safeReturnPath(next, targetRoot);
+  }
+  return targetRoot;
+}
+
+function matchesWorkspaceRoot(value: string, root: string): boolean {
+  return (
+    value === root ||
+    value.startsWith(`${root}/`) ||
+    value.startsWith(`${root}?`) ||
+    value.startsWith(`${root}#`)
+  );
+}
+
+function callbackErrorMessage(
+  copy: ReturnType<typeof getUiCopy>["auth"],
+  error: CallbackErrorCode | undefined,
+): string | undefined {
+  if (error === "access_denied") return copy.callbackErrors.accessDenied;
+  if (error === "not_configured") return copy.callbackErrors.notConfigured;
+  if (error === "missing_code" || error === "exchange_failed") {
+    return copy.callbackErrors.incomplete;
+  }
+  return undefined;
 }
 
 export function AuthPage({
   locale,
   next,
+  error,
 }: Readonly<{
   locale: Locale;
   next?: string;
+  error?: string;
 }>) {
   const copy = getUiCopy(locale);
   const homeHref = locale === "zh" ? "/zh" : "/";
@@ -28,8 +89,10 @@ export function AuthPage({
     next,
     locale === "zh" ? "/zh/workspace" : "/workspace",
   );
-  const englishNext = safeNext === "/zh/workspace" ? "/workspace" : safeNext;
-  const chineseNext = safeNext === "/workspace" ? "/zh/workspace" : safeNext;
+  const callbackError = normalizeCallbackError(error);
+  const initialError = callbackErrorMessage(copy.auth, callbackError);
+  const englishNext = localizedWorkspacePath(safeNext, "en");
+  const chineseNext = localizedWorkspacePath(safeNext, "zh");
 
   return (
     <div className="auth-page-shell">
@@ -49,7 +112,7 @@ export function AuthPage({
 
         <nav className="auth-language-switcher" aria-label={copy.auth.languageAria}>
           <Link
-            href={loginHref("en", englishNext)}
+            href={loginHref("en", englishNext, callbackError)}
             hrefLang="en"
             lang="en"
             aria-current={locale === "en" ? "page" : undefined}
@@ -58,7 +121,7 @@ export function AuthPage({
             {copy.locale.english}
           </Link>
           <Link
-            href={loginHref("zh", chineseNext)}
+            href={loginHref("zh", chineseNext, callbackError)}
             hrefLang="zh-CN"
             lang="zh-CN"
             aria-current={locale === "zh" ? "page" : undefined}
@@ -108,7 +171,7 @@ export function AuthPage({
             <span><Tag weight="fill" /></span>
             <strong>ClearTag</strong>
           </div>
-          <AuthForm locale={locale} next={safeNext} />
+          <AuthForm initialError={initialError} locale={locale} next={safeNext} />
         </section>
       </main>
     </div>

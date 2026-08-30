@@ -28,8 +28,11 @@ export default defineConfig({
       stderr: "pipe",
     },
     {
+      // Build and serve the production artifact with only the two public auth
+      // values. A successful browser login therefore proves Vinext inlined
+      // NEXT_PUBLIC_* without exposing the rest of process.env to the Worker.
       command:
-        "CLOUDFLARE_INCLUDE_PROCESS_ENV=true NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:43173 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_cleartag_e2e npm run dev -- --port 43172",
+        "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:43173 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_cleartag_e2e npm run build && NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:43173 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_cleartag_e2e npm run start -- --port 43172",
       url: "http://localhost:43172",
       reuseExistingServer: false,
       timeout: 120_000,

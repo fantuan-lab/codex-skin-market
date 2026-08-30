@@ -332,6 +332,11 @@ const EN_UI_COPY = {
     divider: "or",
     googleAction: "Continue with Google",
     genericError: "We couldn’t complete that request. Check your details and try again.",
+    callbackErrors: {
+      incomplete: "Sign-in could not be completed. Try again or use the other sign-in method. If the problem continues, contact the deployment owner.",
+      notConfigured: "Sign-in is unavailable because authentication is not configured for this deployment. Contact the deployment owner.",
+      accessDenied: "Google sign-in was cancelled or permission was not granted. Try again or use email and password.",
+    },
     signUpNotice: "If this address can be registered, check its inbox for a confirmation link.",
     redirecting: "Signed in. Opening your workspace…",
     configurationMissing: "Account access is not configured for this build. Ask the deployment owner to configure authentication.",
@@ -745,6 +750,11 @@ const ZH_UI_COPY: UiCopy = {
     divider: "或",
     googleAction: "使用 Google 账号继续",
     genericError: "无法完成该请求。请检查输入信息后重试。",
+    callbackErrors: {
+      incomplete: "未能完成登录。请重试或改用另一种登录方式；如果问题持续出现，请联系部署管理员。",
+      notConfigured: "此部署尚未配置身份验证，暂时无法登录。请联系部署管理员。",
+      accessDenied: "Google 登录已取消或未获授权。请重试，或改用邮箱和密码登录。",
+    },
     signUpNotice: "如果该邮箱可以注册，请前往收件箱查看确认邮件。",
     redirecting: "登录成功，正在打开工作区…",
     configurationMissing: "此版本尚未配置账号访问，请联系部署管理员完成身份验证配置。",

@@ -20,9 +20,11 @@ const getBrowserSnapshot = () => true;
 const getServerSnapshot = () => false;
 
 export function AuthForm({
+  initialError,
   locale,
   next,
 }: Readonly<{
+  initialError?: string;
   locale: Locale;
   next?: string;
 }>) {
@@ -38,7 +40,7 @@ export function AuthForm({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError ?? null);
   const [status, setStatus] = useState<string | null>(null);
   const hasCheckedConfiguration = useSyncExternalStore(
     subscribeToBrowser,
@@ -258,7 +260,12 @@ export function AuthForm({
         {copy.googleAction}
       </button>
 
-      <div id={feedbackId} className="auth-feedback" aria-live="polite">
+      <div
+        id={feedbackId}
+        className="auth-feedback"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {error ? <p role="alert">{error}</p> : null}
         {status ? <p role="status">{status}</p> : null}
       </div>

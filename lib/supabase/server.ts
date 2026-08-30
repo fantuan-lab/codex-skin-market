@@ -1,17 +1,24 @@
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
 
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
+import { requestUsesHttps } from "@/lib/supabase/protocol";
 
 export async function createServerSupabaseClient(): Promise<SupabaseClient | null> {
-  const config = getSupabasePublicConfig();
+  const config = getSupabasePublicConfig({
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  });
   if (!config) return null;
 
   const cookieStore = await cookies();
+  const requestHeaders = await headers();
 
   return createServerClient(config.url, config.publishableKey, {
+    cookieOptions: { secure: requestUsesHttps(undefined, requestHeaders) },
     cookies: {
       getAll: () => cookieStore.getAll(),
       setAll(cookiesToSet) {
@@ -32,10 +39,17 @@ export function createRouteHandlerSupabaseClient(
   request: NextRequest,
   response: NextResponse,
 ): SupabaseClient | null {
-  const config = getSupabasePublicConfig();
+  const config = getSupabasePublicConfig({
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  });
   if (!config) return null;
 
   return createServerClient(config.url, config.publishableKey, {
+    cookieOptions: {
+      secure: requestUsesHttps(request.nextUrl.protocol, request.headers),
+    },
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(cookiesToSet, responseHeaders) {

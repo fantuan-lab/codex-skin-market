@@ -6,11 +6,19 @@ import { createRouteHandlerSupabaseClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const code = request.nextUrl.searchParams.get("code");
+  const providerError = request.nextUrl.searchParams.get("error");
   const returnTo = safeReturnPath(
     request.nextUrl.searchParams.get("returnTo") ??
       request.nextUrl.searchParams.get("next"),
   );
 
+  if (providerError) {
+    return callbackFailure(
+      request,
+      returnTo,
+      providerError === "access_denied" ? "access_denied" : "exchange_failed",
+    );
+  }
   if (!code) return callbackFailure(request, returnTo, "missing_code");
 
   const response = applyPrivateNoStore(
@@ -32,7 +40,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 function callbackFailure(
   request: NextRequest,
   returnTo: string,
-  reason: "missing_code" | "not_configured" | "exchange_failed",
+  reason:
+    | "missing_code"
+    | "not_configured"
+    | "exchange_failed"
+    | "access_denied",
 ): NextResponse {
   const loginUrl = new URL(loginPathFor(returnTo), request.url);
   loginUrl.searchParams.set("error", reason);

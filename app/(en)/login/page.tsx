@@ -6,6 +6,7 @@ import { getAuthenticatedUser } from "@/lib/auth/server";
 import { getUiCopy } from "@/lib/i18n";
 
 type LoginSearchParams = {
+  error?: string | string[];
   next?: string | string[];
   returnTo?: string | string[];
 };
@@ -29,7 +30,13 @@ export default async function EnglishLoginPage({
   const user = await getAuthenticatedUser();
 
   if (user) redirect(next);
-  return <AuthPage locale="en" next={next} />;
+  return (
+    <AuthPage
+      locale="en"
+      next={next}
+      error={firstQueryValue(query.error)}
+    />
+  );
 }
 
 function firstQueryValue(value: string | string[] | undefined): string | undefined {

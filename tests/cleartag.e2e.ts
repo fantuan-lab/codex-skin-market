@@ -8,6 +8,44 @@ import { PDFDocument, PDFName, StandardFonts } from "pdf-lib";
 const TEST_EMAIL = "reviewer@example.com";
 const TEST_PASSWORD = "Correct-Horse-42!";
 const AUTH_STUB_ORIGIN = "http://127.0.0.1:43173";
+const AUTH_COOKIE_NAME = "sb-127-auth-token";
+
+type TestAuthSession = {
+  access_token: string;
+  expires_at: number;
+  expires_in: number;
+  refresh_token: string;
+  token_type: string;
+  user: Record<string, unknown>;
+};
+
+type AuthStubState = {
+  oauthRequests: Array<{
+    outcome: string;
+    provider: string;
+    scopes: string | null;
+  }>;
+  sessionIssues: Array<{
+    accessTokenId: string;
+    expiresAt: number;
+    provider: string;
+    refreshToken: string;
+    source: string;
+  }>;
+  tokenRequests: Array<{
+    authCode: string | null;
+    grantType: string | null;
+    refreshToken: string | null;
+  }>;
+};
+
+function isAuthSessionCookie(name: string): boolean {
+  return (
+    name === AUTH_COOKIE_NAME ||
+    (name.startsWith(`${AUTH_COOKIE_NAME}.`) &&
+      /^\d+$/.test(name.slice(AUTH_COOKIE_NAME.length + 1)))
+  );
+}
 
 function collectRuntimeErrors(page: Page) {
   const errors: string[] = [];
@@ -55,6 +93,74 @@ async function tabUntilFocused(page: Page, locator: ReturnType<Page["locator"]>)
     if (await locator.evaluate((element) => element === document.activeElement)) return;
   }
   throw new Error("The expected control was not reachable in the keyboard tab order.");
+}
+
+async function resetAuthStub(
+  page: Page,
+  config?: { oauthOutcome: "cancel" | "exchange-failure" | "success" },
+) {
+  const reset = await page.request.post(`${AUTH_STUB_ORIGIN}/__test/reset`);
+  expect(reset.ok()).toBe(true);
+  if (config) {
+    const configured = await page.request.post(
+      `${AUTH_STUB_ORIGIN}/__test/config`,
+      { data: config },
+    );
+    expect(configured.ok()).toBe(true);
+  }
+}
+
+async function readAuthStubState(page: Page): Promise<AuthStubState> {
+  const response = await page.request.get(`${AUTH_STUB_ORIGIN}/__test/state`);
+  expect(response.ok()).toBe(true);
+  return response.json() as Promise<AuthStubState>;
+}
+
+async function installExpiredSession(page: Page): Promise<TestAuthSession> {
+  await resetAuthStub(page);
+  const response = await page.request.post(
+    `${AUTH_STUB_ORIGIN}/__test/session`,
+    { data: { expiresIn: -120, provider: "email" } },
+  );
+  expect(response.ok()).toBe(true);
+  const session = (await response.json()) as TestAuthSession;
+  expect(session.expires_at).toBeLessThan(Math.floor(Date.now() / 1000));
+
+  await page.context().addCookies([
+    {
+      name: AUTH_COOKIE_NAME,
+      value: encodeAuthSessionCookie(session),
+      url: "http://localhost:43172",
+      sameSite: "Lax",
+      secure: false,
+    },
+  ]);
+  return session;
+}
+
+async function readBrowserAuthSession(page: Page): Promise<TestAuthSession> {
+  const cookies = (await page.context().cookies()).filter(
+    (cookie) => isAuthSessionCookie(cookie.name),
+  );
+  expect(cookies.length).toBeGreaterThan(0);
+  const unchunked = cookies.find((cookie) => cookie.name === AUTH_COOKIE_NAME);
+  const value = unchunked
+    ? unchunked.value
+    : cookies
+        .toSorted((left, right) =>
+          Number(left.name.split(".").at(-1)) -
+          Number(right.name.split(".").at(-1)),
+        )
+        .map((cookie) => cookie.value)
+        .join("");
+  expect(value).toMatch(/^base64-/);
+  return JSON.parse(
+    Buffer.from(value.slice("base64-".length), "base64url").toString("utf8"),
+  ) as TestAuthSession;
+}
+
+function encodeAuthSessionCookie(session: TestAuthSession): string {
+  return `base64-${Buffer.from(JSON.stringify(session), "utf8").toString("base64url")}`;
 }
 
 test("landing page is meaningful, login-gated, responsive, and axe-clean", async ({
@@ -214,17 +320,11 @@ test("email login is generic on failure, persists on refresh, and signs out clea
   expect(errors).toEqual([]);
 });
 
-test("Google login requests only basic identity scopes and a safe PKCE callback", async ({
+test("Google PKCE completes authorize, callback, exchange, cookie, and workspace", async ({
   page,
 }) => {
+  await resetAuthStub(page, { oauthOutcome: "success" });
   await page.goto("/login?returnTo=%2Fworkspace", { waitUntil: "networkidle" });
-  await page.route(`${AUTH_STUB_ORIGIN}/auth/v1/authorize**`, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "text/html; charset=utf-8",
-      body: "<!doctype html><html><body><p>Local OAuth authorization request captured.</p></body></html>",
-    });
-  });
 
   const authorizeRequestPromise = page.waitForRequest((request) =>
     request.url().startsWith(`${AUTH_STUB_ORIGIN}/auth/v1/authorize`),
@@ -246,7 +346,129 @@ test("Google login requests only basic identity scopes and a safe PKCE callback"
   expect(authorizeUrl.searchParams.get("code_challenge_method")).toBe("s256");
   expect(authorizeUrl.searchParams.has("access_type")).toBe(false);
   expect(authorizeUrl.searchParams.has("prompt")).toBe(false);
-  await expect(page).toHaveURL(new RegExp(`^${AUTH_STUB_ORIGIN.replaceAll(".", "\\.")}`));
+  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "PDF review workspace" })).toBeVisible();
+  await expect(page.getByText(TEST_EMAIL, { exact: true })).toBeVisible();
+
+  const cookies = await page.context().cookies();
+  const authCookies = cookies.filter((cookie) =>
+    isAuthSessionCookie(cookie.name),
+  );
+  expect(authCookies.length).toBeGreaterThan(0);
+  expect(authCookies.every((cookie) => cookie.secure === false)).toBe(true);
+
+  const state = await readAuthStubState(page);
+  expect(state.oauthRequests).toMatchObject([
+    {
+      outcome: "success",
+      provider: "google",
+      scopes: "openid email profile",
+    },
+  ]);
+  expect(state.tokenRequests).toEqual([
+    expect.objectContaining({ grantType: "pkce" }),
+  ]);
+  expect(state.sessionIssues).toEqual([
+    expect.objectContaining({ provider: "google", source: "pkce" }),
+  ]);
+});
+
+test("Google cancellation returns to login with a visible, localized error", async ({
+  page,
+}) => {
+  await resetAuthStub(page, { oauthOutcome: "cancel" });
+  await page.goto("/login?returnTo=%2Fworkspace", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Continue with Google" }).click();
+
+  await expect(page).toHaveURL(
+    /\/login\?returnTo=%2Fworkspace&error=access_denied$/,
+    { timeout: 30_000 },
+  );
+  await expect(page.getByRole("alert")).toHaveText(
+    "Google sign-in was cancelled or permission was not granted. Try again or use email and password.",
+  );
+  expect(
+    (await page.context().cookies()).some((cookie) =>
+      isAuthSessionCookie(cookie.name),
+    ),
+  ).toBe(false);
+  const state = await readAuthStubState(page);
+  expect(state.oauthRequests).toMatchObject([{ outcome: "cancel" }]);
+  expect(state.tokenRequests).toEqual([]);
+});
+
+test("Google exchange failure returns to login with a visible error", async ({
+  page,
+}) => {
+  await resetAuthStub(page, { oauthOutcome: "exchange-failure" });
+  await page.goto("/login?returnTo=%2Fworkspace", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Continue with Google" }).click();
+
+  await expect(page).toHaveURL(
+    /\/login\?returnTo=%2Fworkspace&error=exchange_failed$/,
+    { timeout: 30_000 },
+  );
+  await expect(page.getByRole("alert")).toHaveText(
+    "Sign-in could not be completed. Try again or use the other sign-in method. If the problem continues, contact the deployment owner.",
+  );
+  expect(
+    (await page.context().cookies()).some((cookie) =>
+      isAuthSessionCookie(cookie.name),
+    ),
+  ).toBe(false);
+  const state = await readAuthStubState(page);
+  expect(state.tokenRequests).toEqual([
+    expect.objectContaining({ grantType: "pkce" }),
+  ]);
+  expect(state.sessionIssues).toEqual([]);
+});
+
+test("an expired access token is refreshed and both session tokens rotate", async ({
+  page,
+}) => {
+  const expired = await installExpiredSession(page);
+  const expiredPayload = JSON.parse(
+    Buffer.from(expired.access_token.split(".")[1], "base64url").toString("utf8"),
+  ) as { exp: number };
+  expect(expiredPayload.exp).toBeLessThan(Math.floor(Date.now() / 1000));
+
+  const response = await page.goto("/workspace", { waitUntil: "networkidle" });
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { name: "PDF review workspace" })).toBeVisible();
+
+  const rotated = await readBrowserAuthSession(page);
+  expect(rotated.access_token).not.toBe(expired.access_token);
+  expect(rotated.refresh_token).not.toBe(expired.refresh_token);
+  expect(rotated.expires_at).toBeGreaterThan(Math.floor(Date.now() / 1000));
+  const state = await readAuthStubState(page);
+  expect(state.tokenRequests).toContainEqual(
+    expect.objectContaining({
+      grantType: "refresh_token",
+      refreshToken: expired.refresh_token,
+    }),
+  );
+  expect(state.sessionIssues).toContainEqual(
+    expect.objectContaining({ source: "refresh" }),
+  );
+});
+
+test("the login entry propagates a rotated session cookie", async ({ page }) => {
+  const expired = await installExpiredSession(page);
+
+  await page.goto("/login?returnTo=%2Fworkspace", { waitUntil: "networkidle" });
+  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page.getByText(TEST_EMAIL, { exact: true })).toBeVisible();
+
+  const rotated = await readBrowserAuthSession(page);
+  expect(rotated.access_token).not.toBe(expired.access_token);
+  expect(rotated.refresh_token).not.toBe(expired.refresh_token);
+  const state = await readAuthStubState(page);
+  expect(state.tokenRequests).toContainEqual(
+    expect.objectContaining({
+      grantType: "refresh_token",
+      refreshToken: expired.refresh_token,
+    }),
+  );
 });
 
 test("Chinese login is localized, axe-clean, and usable at 320px", async ({ page }) => {

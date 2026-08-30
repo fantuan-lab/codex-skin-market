@@ -32,6 +32,8 @@ Never expose a Supabase secret key, legacy `service_role` key, or Google client 
 In Supabase Auth configuration:
 
 - Keep email confirmation enabled and configure production SMTP before accepting real users; Supabase's default SMTP is for limited testing, not production delivery.
+- Set the server-side minimum password length to at least 8 characters. The registration form enforces the same minimum in the browser, but client-side validation is not a security boundary; consider stronger character and leaked-password checks for production.
+- CAPTCHA is not wired into this MVP. Before public production use, implement and verify hCaptcha or Cloudflare Turnstile token handling in the account forms, then enable the matching Supabase protection; enabling it first would block email authentication. Also review the project Auth rate limits for the expected traffic and abuse model.
 - Add the local and production site URLs to the redirect allow list, including `/auth/callback`.
 - Enable Google using a Web OAuth client. Google Cloud's authorized redirect URI is the Supabase callback `https://PROJECT_REF.supabase.co/auth/v1/callback`; the Google client secret stays in Supabase, not in this repository.
 - Request only the basic OpenID, email, and profile scopes. ClearTag does not request Google Drive or Gmail access.

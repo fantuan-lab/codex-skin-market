@@ -20,6 +20,9 @@ const publicJwk = publicKey.export({ format: "jwk" });
 const refreshTokens = new Map();
 const authorizationCodes = new Map();
 const oauthRequests = [];
+const tokenRequests = [];
+const sessionIssues = [];
+let oauthOutcome = "success";
 
 const base64url = (value) => Buffer.from(value).toString("base64url");
 const now = () => Math.floor(Date.now() / 1000);
@@ -59,17 +62,18 @@ function authUser(provider = "email") {
   };
 }
 
-function issueAccessToken(issuer, provider) {
+function issueAccessToken(issuer, provider, expiresIn = 60 * 60) {
   const issuedAt = now();
+  const jwtId = randomUUID();
   const header = { alg: "RS256", typ: "JWT", kid: keyId };
   const payload = {
     iss: issuer,
     sub: account.id,
     aud: "authenticated",
-    exp: issuedAt + 60 * 60,
+    exp: issuedAt + expiresIn,
     iat: issuedAt,
     nbf: issuedAt,
-    jti: randomUUID(),
+    jti: jwtId,
     email: account.email,
     phone: "",
     role: "authenticated",
@@ -79,21 +83,41 @@ function issueAccessToken(issuer, provider) {
     user_metadata: { name: "ClearTag Reviewer" },
   };
   const input = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}`;
-  return `${input}.${sign("RSA-SHA256", Buffer.from(input), privateKey).toString("base64url")}`;
+  return {
+    expiresAt: payload.exp,
+    jwtId,
+    token: `${input}.${sign("RSA-SHA256", Buffer.from(input), privateKey).toString("base64url")}`,
+  };
 }
 
-function issueSession(request, provider = "email") {
+function issueSession(
+  request,
+  provider = "email",
+  { expiresIn = 60 * 60, source = "password" } = {},
+) {
   const refreshToken = randomUUID();
   refreshTokens.set(refreshToken, { provider, issuedAt: now() });
-  const expiresAt = now() + 60 * 60;
-  return {
-    access_token: issueAccessToken(`${testBaseUrl(request)}/auth/v1`, provider),
+  const accessToken = issueAccessToken(
+    `${testBaseUrl(request)}/auth/v1`,
+    provider,
+    expiresIn,
+  );
+  const session = {
+    access_token: accessToken.token,
     token_type: "bearer",
-    expires_in: 60 * 60,
-    expires_at: expiresAt,
+    expires_in: expiresIn,
+    expires_at: accessToken.expiresAt,
     refresh_token: refreshToken,
     user: authUser(provider),
   };
+  sessionIssues.push({
+    accessTokenId: accessToken.jwtId,
+    expiresAt: accessToken.expiresAt,
+    provider,
+    refreshToken,
+    source,
+  });
+  return session;
 }
 
 function send(response, status, body, extraHeaders = {}) {
@@ -191,6 +215,9 @@ const server = createServer(async (request, response) => {
       refreshTokenCount: refreshTokens.size,
       authorizationCodeCount: authorizationCodes.size,
       oauthRequests,
+      tokenRequests,
+      sessionIssues,
+      oauthOutcome,
     }, cors);
     return;
   }
@@ -199,7 +226,39 @@ const server = createServer(async (request, response) => {
     refreshTokens.clear();
     authorizationCodes.clear();
     oauthRequests.splice(0);
+    tokenRequests.splice(0);
+    sessionIssues.splice(0);
+    oauthOutcome = "success";
     send(response, 200, { ok: true }, cors);
+    return;
+  }
+
+  if (request.method === "POST" && pathname === "/__test/config") {
+    const body = await readBody(request);
+    if (
+      body.oauthOutcome !== undefined &&
+      !["success", "cancel", "exchange-failure"].includes(body.oauthOutcome)
+    ) {
+      send(response, 400, { message: "Unsupported OAuth test outcome" }, cors);
+      return;
+    }
+    if (body.oauthOutcome !== undefined) oauthOutcome = body.oauthOutcome;
+    send(response, 200, { oauthOutcome }, cors);
+    return;
+  }
+
+  if (request.method === "POST" && pathname === "/__test/session") {
+    const body = await readBody(request);
+    const expiresIn = Number.isFinite(body.expiresIn)
+      ? Math.trunc(body.expiresIn)
+      : 60 * 60;
+    const provider = body.provider === "google" ? "google" : "email";
+    send(
+      response,
+      200,
+      issueSession(request, provider, { expiresIn, source: "test-session" }),
+      cors,
+    );
     return;
   }
 
@@ -219,12 +278,26 @@ const server = createServer(async (request, response) => {
   if (request.method === "POST" && pathname === "/auth/v1/token") {
     const grantType = searchParams.get("grant_type");
     const body = await readBody(request);
+    tokenRequests.push({
+      authCode: body.auth_code || body.code || null,
+      grantType,
+      receivedAt: new Date().toISOString(),
+      refreshToken: body.refresh_token || null,
+    });
     if (grantType === "password") {
       if (body.email !== account.email || body.password !== account.password) {
         badCredentials(response, request);
         return;
       }
-      send(response, 200, { ...issueSession(request), user: authUser("email") }, cors);
+      send(
+        response,
+        200,
+        {
+          ...issueSession(request, "email", { source: "password" }),
+          user: authUser("email"),
+        },
+        cors,
+      );
       return;
     }
     if (grantType === "refresh_token") {
@@ -234,18 +307,33 @@ const server = createServer(async (request, response) => {
         return;
       }
       refreshTokens.delete(body.refresh_token);
-      send(response, 200, issueSession(request, entry.provider), cors);
+      send(
+        response,
+        200,
+        issueSession(request, entry.provider, { source: "refresh" }),
+        cors,
+      );
       return;
     }
     if (grantType === "pkce") {
       const code = body.auth_code || body.code;
       const entry = authorizationCodes.get(code);
-      if (!entry || !pkceMatches(entry, body.code_verifier)) {
+      if (
+        !entry ||
+        entry.forceFailure ||
+        !pkceMatches(entry, body.code_verifier)
+      ) {
+        if (entry) authorizationCodes.delete(code);
         send(response, 400, { code: "bad_code_verifier", message: "Invalid authorization code or code verifier" }, cors);
         return;
       }
       authorizationCodes.delete(code);
-      send(response, 200, issueSession(request, "google"), cors);
+      send(
+        response,
+        200,
+        issueSession(request, "google", { source: "pkce" }),
+        cors,
+      );
       return;
     }
     send(response, 400, { code: "unsupported_grant_type", message: "Unsupported grant type" }, cors);
@@ -283,11 +371,35 @@ const server = createServer(async (request, response) => {
     }
     if (!isLocalCallback(callbackUrl)) callbackUrl = new URL(fallbackRedirect);
 
+    if (oauthOutcome === "cancel") {
+      callbackUrl.searchParams.set("error", "access_denied");
+      callbackUrl.searchParams.set(
+        "error_description",
+        "The user cancelled the local test authorization request.",
+      );
+      oauthRequests.push({
+        code: null,
+        createdAt: new Date().toISOString(),
+        outcome: oauthOutcome,
+        provider,
+        redirectTo: callbackUrl.toString(),
+        scopes: searchParams.get("scopes"),
+      });
+      response.writeHead(302, {
+        ...cors,
+        location: callbackUrl.toString(),
+        "cache-control": "no-store",
+      });
+      response.end();
+      return;
+    }
+
     const code = randomUUID();
     const state = searchParams.get("state");
     authorizationCodes.set(code, {
       codeChallenge: searchParams.get("code_challenge"),
       codeChallengeMethod: searchParams.get("code_challenge_method"),
+      forceFailure: oauthOutcome === "exchange-failure",
     });
     callbackUrl.searchParams.set("code", code);
     if (state) callbackUrl.searchParams.set("state", state);
@@ -297,6 +409,8 @@ const server = createServer(async (request, response) => {
       code,
       codeChallengeMethod: searchParams.get("code_challenge_method"),
       createdAt: new Date().toISOString(),
+      outcome: oauthOutcome,
+      scopes: searchParams.get("scopes"),
     });
     response.writeHead(302, { ...cors, location: callbackUrl.toString(), "cache-control": "no-store" });
     response.end();
