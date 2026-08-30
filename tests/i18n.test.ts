@@ -56,6 +56,19 @@ describe("bilingual UI copy", () => {
     expect(chinese.hero.title).toContain("可复核的修复");
     expect(english.hero.boundaryNote).toContain("not one-click compliance");
     expect(chinese.hero.boundaryNote).toContain("不承诺一键合规");
+    expect(english.hero.primaryAction).toBe("Analyze a PDF");
+    expect(chinese.hero.primaryAction).toBe("分析一份 PDF");
+    expect(english.hero.preview.label).toBe("Illustrative UI example · not scan output");
+    expect(english.hero.preview.fileName).not.toBe("known-accessibility-issues.pdf");
+    expect(english.productProof.fixtureLabel).toContain("not scan output");
+    expect(chinese.hero.preview.label).toBe("界面示意 · 并非扫描结果");
+    expect(chinese.productProof.fixtureLabel).toContain("并非扫描结果");
+    expect(english.productProof.packItems).toHaveLength(4);
+    expect(chinese.productProof.packItems).toHaveLength(4);
+    expect(english.intake.sectionIntro).toContain("PDF bytes");
+    expect(chinese.intake.sectionIntro).toContain("真实 PDF 字节");
+    expect(english.standards.illustrationAlt).toContain("WCAG 2.2");
+    expect(chinese.footer.navigationAria).toBe("页脚导航");
     expect(chinese.report.htmlLang).toBe("zh-CN");
 
     expect(getStandardProfileCopy("section508", "zh")).toMatchObject({

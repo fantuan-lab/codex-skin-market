@@ -38,7 +38,39 @@ test("landing page is meaningful, keyboard reachable, responsive, and axe-clean"
       name: /Turn accessibility findings into reviewable fixes/i,
     }),
   ).toBeVisible();
-  await expect(page.getByText("Guided remediation—not one-click compliance.")).toBeVisible();
+  await expect(
+    page.locator(".boundary-note", {
+      hasText: "Guided remediation—not one-click compliance.",
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("Illustrative UI example · not scan output")).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "See the issue. Record the judgment. Deliver the evidence.",
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".standards-illustration")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Analyze a PDF", exact: true })).toHaveAttribute(
+    "href",
+    "#analyzer",
+  );
+  const landingOrder = await page.evaluate(() =>
+    [
+      ".hero",
+      ".confidence-strip",
+      ".audience-section",
+      ".workflow-section",
+      ".product-proof-section",
+      ".scope-section",
+      ".standards-section",
+      ".security-section",
+      ".pricing-section",
+      ".final-boundary",
+      ".analyzer-section",
+    ].map((selector) => document.querySelector(selector)?.getBoundingClientRect().top ?? -1),
+  );
+  expect(landingOrder.every((top) => top >= 0)).toBe(true);
+  expect(landingOrder).toEqual([...landingOrder].sort((a, b) => a - b));
   await expect(page.locator("[data-nextjs-dialog], .vite-error-overlay")).toHaveCount(0);
   await expect(page.locator("body")).not.toHaveText("");
 
@@ -57,8 +89,19 @@ test("landing page is meaningful, keyboard reachable, responsive, and axe-clean"
     client: document.documentElement.clientWidth,
   }));
   expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
+  await expect(
+    page.getByRole("banner").getByRole("link", { name: "Open analyzer", exact: true }),
+  ).toBeVisible();
   await expectNoAxeViolations(page);
   await page.screenshot({ path: "test-results/cleartag-mobile.png", fullPage: true });
+
+  await page.setViewportSize({ width: 320, height: 760 });
+  await page.reload({ waitUntil: "networkidle" });
+  const narrowWidths = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    client: document.documentElement.clientWidth,
+  }));
+  expect(narrowWidths.scroll).toBeLessThanOrEqual(narrowWidths.client + 1);
 });
 
 test("Chinese route, language switching, workspace state, and localized evidence stay accessible", async ({

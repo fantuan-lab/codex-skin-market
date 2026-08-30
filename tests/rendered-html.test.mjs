@@ -22,6 +22,25 @@ function assertBrandIcons(html) {
   assert.doesNotMatch(html, /href="\/favicon\.svg"/i);
 }
 
+function assertLandingOrder(html) {
+  const markers = [
+    'class="hero"',
+    'class="confidence-strip"',
+    'class="audience-section"',
+    'class="workflow-section"',
+    'class="product-proof-section"',
+    'class="scope-section"',
+    'class="standards-section"',
+    'class="security-section"',
+    'class="pricing-section"',
+    'class="final-boundary"',
+    'class="analyzer-section"',
+  ];
+  const positions = markers.map((marker) => html.indexOf(marker));
+  assert.ok(positions.every((position) => position >= 0), `missing landing marker: ${positions}`);
+  assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
+}
+
 test("server-renders the English ClearTag landing page and local analyzer", async () => {
   const response = await render("/");
   assert.equal(response.status, 200);
@@ -31,6 +50,7 @@ test("server-renders the English ClearTag landing page and local analyzer", asyn
   assert.match(html, /<html[^>]+lang="en"/i);
   assert.match(html, /<title>ClearTag · Guided PDF remediation<\/title>/i);
   assert.match(html, /Turn accessibility findings into reviewable fixes and defensible evidence/);
+  assert.match(html, /Illustrative UI example · not scan output/);
   assert.match(html, /Choose or drop a PDF/);
   assert.match(html, /aria-label="Language"/);
   assert.match(html, /href="\/zh"/i);
@@ -42,10 +62,15 @@ test("server-renders the English ClearTag landing page and local analyzer", asyn
   assert.match(html, /EN 301 549/);
   assert.match(html, /No server-side PDF retention/);
   assert.match(html, /Not yet offered/);
+  assert.match(html, /See the issue\. Record the judgment\. Deliver the evidence\./);
+  assert.match(html, /src="\/landing\/standards-books\.png"/i);
+  assert.match(html, /Footer navigation/);
   assert.match(html, /Skip to main content/);
+  assertLandingOrder(html);
   assertBrandIcons(html);
   assert.doesNotMatch(html, /all PDFs (?:must|need to) be remediated/i);
   assert.doesNotMatch(html, /automatically certif|guaranteed compliant|100% compliant/i);
+  assert.doesNotMatch(html, /cleartag\.invalid/i);
   assert.doesNotMatch(html, /Codex Skin Lab|竹影熊猫|月影灵编/);
 });
 
@@ -58,6 +83,7 @@ test("server-renders a complete Chinese route with the correct document language
   assert.match(html, /<html[^>]+lang="zh-CN"/i);
   assert.match(html, /<title>ClearTag · 引导式 PDF 无障碍修复<\/title>/i);
   assert.match(html, /把无障碍问题转化为可复核的修复和可追溯的证据/);
+  assert.match(html, /界面示意 · 并非扫描结果/);
   assert.match(html, /选择或拖入 PDF/);
   assert.match(html, /aria-label="语言"/);
   assert.match(html, /href="\/"/i);
@@ -68,6 +94,10 @@ test("server-renders a complete Chinese route with the correct document language
   assert.match(html, /EN 301 549/);
   assert.match(html, /此版本不在服务器端留存 PDF/);
   assert.match(html, /不承诺一键合规/);
+  assert.match(html, /看见问题，记录判断，交付证据/);
+  assert.match(html, /src="\/landing\/standards-books\.png"/i);
+  assert.match(html, /aria-label="页脚导航"/);
+  assertLandingOrder(html);
   assertBrandIcons(html);
   assert.doesNotMatch(html, /一键(?:实现|完成)合规|自动获得认证|保证所有 PDF 符合|100% 合规/i);
 });
