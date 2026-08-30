@@ -117,7 +117,7 @@ export function AnalysisWorkspace({ initialAnalysis, initialBytes, onReset }: Pr
 
   const applySafeFix = async () => {
     if (!selected?.safeFix || !fixValue.trim()) return;
-    setBusyMessage("Creating and rechecking a metadata-only revision");
+    setBusyMessage("Strictly preflighting and rechecking a restricted metadata revision");
     setError(null);
     setMessage(null);
     try {
@@ -131,7 +131,7 @@ export function AnalysisWorkspace({ initialAnalysis, initialBytes, onReset }: Pr
         fileName: nextFileName,
         profileIds: analysis.profileIds,
       });
-      verifyMetadataOnlyParity(analysis, rescanned);
+      verifyRestrictedRevisionParity(analysis, rescanned);
       verifyTargetFindingResolved(rescanned, selected);
 
       const merged = mergeRevision(analysis, rescanned, selected, fixValue.trim(), revision.changes);
@@ -393,11 +393,13 @@ export function AnalysisWorkspace({ initialAnalysis, initialBytes, onReset }: Pr
                 <section className="safe-fix-panel" aria-labelledby="safe-fix-title">
                   <div>
                     <p className="section-label">Restricted writeback</p>
-                    <h4 id="safe-fix-title">Create a metadata-only revision</h4>
+                    <h4 id="safe-fix-title">Create a restricted metadata revision</h4>
                     <p>
-                      The original is never overwritten. ClearTag saves a new file,
-                      reopens it, compares protected structure signals, and reruns the
-                      analysis before download.
+                      The original is never overwritten. ClearTag strictly preflights
+                      the real input bytes, refuses rich or uncertain structures, writes
+                      a separately serialized PDF, then reopens and rechecks it. Preserve
+                      the original and review the output; this is not a guarantee that
+                      only metadata bytes changed or that the PDF is undamaged.
                     </p>
                   </div>
                   <label>
@@ -575,7 +577,7 @@ function mergeRevision(
         at,
         from: fixedFinding.status,
         to: "fixed",
-        note: `Metadata-only revision verified after writeback: ${after}`,
+        note: `Restricted metadata revision rechecked after writeback: ${after}`,
         actor: "analyzer",
       },
     ],
@@ -594,7 +596,7 @@ function mergeRevision(
       ...previous.versions,
       {
         version: previous.versions.length + 1,
-        label: "Verified metadata-only revision",
+        label: "Rechecked restricted metadata revision",
         fingerprint: rescanned.fingerprint,
         createdAt: at,
         changes,
@@ -624,7 +626,7 @@ function verifyTargetFindingResolved(after: PdfAnalysis, target: Finding) {
   }
 }
 
-function verifyMetadataOnlyParity(before: PdfAnalysis, after: PdfAnalysis) {
+function verifyRestrictedRevisionParity(before: PdfAnalysis, after: PdfAnalysis) {
   if (before.pageCount !== after.pageCount) throw new Error("Page count changed during writeback.");
   const beforeSignals = before.pages.map(protectedPageSignals);
   const afterSignals = after.pages.map(protectedPageSignals);

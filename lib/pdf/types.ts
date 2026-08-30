@@ -78,6 +78,17 @@ export type CoverageState =
   | "manual"
   | "not-evaluated";
 
+export type PdfSafetyProbeState = "present" | "absent" | "unknown";
+
+export interface PdfSafetyInspection {
+  metadata: PdfSafetyProbeState;
+  markInfo: PdfSafetyProbeState;
+  fieldObjects: PdfSafetyProbeState;
+  signatures: PdfSafetyProbeState;
+  javaScriptActions: PdfSafetyProbeState;
+  structureTrees: PdfSafetyProbeState;
+}
+
 export interface CoverageItem {
   id: FindingCategory;
   label: string;
@@ -97,6 +108,7 @@ export interface PdfMetadataSummary {
   hasSignatures: boolean;
   hasXfa: boolean;
   hasJavaScript: boolean;
+  safetyInspection: PdfSafetyInspection;
 }
 
 export interface PageSignalSummary {
@@ -104,6 +116,7 @@ export interface PageSignalSummary {
   textCharacters: number;
   textItems: number;
   imagePaintOperations: number;
+  annotationCount: number;
   linkAnnotations: number;
   widgetAnnotations: number;
   structureRoles: string[];

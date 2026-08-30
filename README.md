@@ -34,9 +34,9 @@ The analyzer does not persist PDF body text, form values, or complete link targe
 
 ## Restricted writeback
 
-The only implemented automatic changes are a document Title and primary language tag. ClearTag writes a new file, never overwrites the original, reopens the result, checks the exact input fingerprint, compares protected page/structure signals, reruns analysis, and records before/after evidence.
+The only implemented automatic changes are a document Title, primary language tag, and revision modification date. ClearTag writes a separately serialized PDF, never overwrites the original, reopens the result, checks the exact input fingerprint, compares protected document objects and page geometry, reruns analysis, and records before/after evidence. This is a restricted metadata revision—not a claim that only metadata bytes changed, that every PDF feature was preserved, or that the output is undamaged.
 
-Writeback is limited to simple text PDFs and is disabled when exposed tags, images, links, tables, widgets, encryption, AcroForm, signatures, XFA, or scripts are present. Tag trees, figures, lists, complex tables, formulas, OCR, and interactive forms are never auto-repaired by this MVP.
+Writeback authorization never relies on analyzer booleans. The real input bytes are loaded again with strict invalid-object handling and scanned fail-closed. Any inconclusive analyzer safety probe, malformed or unresolved object, encryption, tags or MarkInfo, annotations, actions, name trees, attachments, outlines, XMP, forms/XFA, signatures/permissions, images, Form XObjects, rich media, or other unsupported structure disables revision creation. Tag trees, figures, lists, complex tables, formulas, OCR, and interactive forms are never auto-repaired by this MVP.
 
 ## Evidence mappings and legal boundary
 
@@ -70,7 +70,7 @@ Regenerate them with `npm run fixtures:generate` only when fixture expectations 
 
 - Next.js/React UI compiled by the repository's existing Vinext/Vite/Cloudflare Sites stack.
 - PDF.js for parsing, page signals, annotations, and structure-tree exposure.
-- pdf-lib for restricted metadata-only revision output.
+- pdf-lib for strictly preflighted, restricted metadata revision output.
 - JSZip for accessible HTML, machine-readable JSON, and README evidence packs.
 - Vitest for analyzer/remediation integration tests and Playwright + axe-core for browser acceptance.
 

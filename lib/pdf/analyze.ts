@@ -1,4 +1,10 @@
 import { referencesFor } from "./standards";
+import {
+  featureProbeState,
+  mergeFeatureProbeState,
+  restrictedMetadataEligibility,
+  runPdfProbe,
+} from "./safety";
 import type {
   AnalyzeOptions,
   CoverageItem,
@@ -6,6 +12,7 @@ import type {
   FindingCategory,
   PageSignalSummary,
   PdfAnalysis,
+  PdfSafetyProbeState,
   Severity,
   StandardProfileId,
 } from "./types";
@@ -126,14 +133,26 @@ export async function analyzePdf(
   }
 
   try {
-    const [metadataResult, markInfo, fieldObjects, signatures, javaScriptActions] =
+    const [metadataProbe, markInfoProbe, fieldObjectsProbe, signaturesProbe, javaScriptProbe] =
       await Promise.all([
-        document.getMetadata().catch(() => ({ info: {}, metadata: null })),
-        document.getMarkInfo().catch(() => null),
-        document.getFieldObjects().catch(() => null),
-        document.getSignatures().catch(() => null),
-        document.getJSActions().catch(() => null),
+        runPdfProbe("metadata", () => document.getMetadata()),
+        runPdfProbe("MarkInfo", () => document.getMarkInfo()),
+        runPdfProbe("field objects", () => document.getFieldObjects()),
+        runPdfProbe("signatures", () => document.getSignatures()),
+        runPdfProbe("JavaScript actions", () => document.getJSActions()),
       ]);
+
+    const metadataResult = metadataProbe.state === "known"
+      ? metadataProbe.value
+      : { info: {}, metadata: null };
+    const markInfo = markInfoProbe.state === "known" ? markInfoProbe.value : null;
+    const fieldObjects = fieldObjectsProbe.state === "known"
+      ? fieldObjectsProbe.value
+      : null;
+    const signatures = signaturesProbe.state === "known" ? signaturesProbe.value : null;
+    const javaScriptActions = javaScriptProbe.state === "known"
+      ? javaScriptProbe.value
+      : null;
 
     const info = metadataResult.info as Record<string, unknown>;
     const markInfoMarked = readMarkInfo(markInfo, "Marked");
@@ -155,6 +174,7 @@ export async function analyzePdf(
     let findingSequence = 0;
     let firstTextLanguage: string | null = null;
     let totalTextCharacters = 0;
+    let totalAnnotations = 0;
     let totalLinks = 0;
     let totalWidgets = 0;
     let totalImages = 0;
@@ -163,6 +183,7 @@ export async function analyzePdf(
     let totalTextItems = 0;
     let totalOperatorCount = 0;
     let hasAnyStructure = false;
+    let structureTrees: PdfSafetyProbeState = "absent";
     const headingSequence: Array<{ role: string; page: number }> = [];
     const visualHeadingPages: number[] = [];
 
@@ -196,12 +217,17 @@ export async function analyzePdf(
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       assertNotCancelled(options.signal);
       const page = await document.getPage(pageNumber);
-      const [textContent, annotations, structTree, operatorList] = await Promise.all([
+      const [textContent, annotations, structTreeProbe, operatorList] = await Promise.all([
         page.getTextContent({ includeMarkedContent: true }),
         page.getAnnotations({ intent: "display" }),
-        page.getStructTree().catch(() => null),
+        runPdfProbe(`page ${pageNumber} structure tree`, () => page.getStructTree()),
         page.getOperatorList(),
       ]);
+      const structTree = structTreeProbe.state === "known" ? structTreeProbe.value : null;
+      structureTrees = mergeFeatureProbeState(
+        structureTrees,
+        featureProbeState(structTreeProbe, (value) => value !== null),
+      );
       assertNotCancelled(options.signal);
       totalTextItems += textContent.items.length;
       totalOperatorCount += operatorList.fnArray.length;
@@ -234,6 +260,7 @@ export async function analyzePdf(
       if (!firstTextLanguage && textContent.lang) firstTextLanguage = textContent.lang;
 
       const typedAnnotations = annotations as AnnotationSignal[];
+      totalAnnotations += typedAnnotations.length;
       const links = typedAnnotations.filter((annotation) => annotation.subtype === "Link");
       const widgets = typedAnnotations.filter(
         (annotation) => annotation.subtype === "Widget",
@@ -261,6 +288,7 @@ export async function analyzePdf(
         textCharacters,
         textItems: textItems.length,
         imagePaintOperations,
+        annotationCount: typedAnnotations.length,
         linkAnnotations: links.length,
         widgetAnnotations: widgets.length,
         structureRoles: unique(structSummary.roles),
@@ -559,17 +587,38 @@ export async function analyzePdf(
         totalWidgets > 0 ||
         (fieldObjects && Object.keys(fieldObjects).length > 0),
     );
-    const allowsMetadataWriteback =
-      textBased &&
-      !encrypted &&
-      !hasSignatures &&
-      !hasXfa &&
-      !hasJavaScript &&
-      !hasAcroForm &&
-      !hasAnyStructure &&
-      totalImages === 0 &&
-      totalLinks === 0 &&
-      totalTables === 0;
+    const safetyInspection = {
+      metadata: featureProbeState(
+        metadataProbe,
+        (value) =>
+          Object.keys(value.info as Record<string, unknown>).length > 0 ||
+          value.metadata !== null,
+      ),
+      markInfo: featureProbeState(markInfoProbe, (value) => value !== null),
+      fieldObjects: featureProbeState(
+        fieldObjectsProbe,
+        (value) => Boolean(value && Object.keys(value).length > 0),
+      ),
+      signatures: featureProbeState(
+        signaturesProbe,
+        (value) => Boolean(value && value.length > 0),
+      ),
+      javaScriptActions: featureProbeState(
+        javaScriptProbe,
+        (value) => Boolean(value && value.size > 0),
+      ),
+      structureTrees,
+    };
+    const allowsMetadataWriteback = restrictedMetadataEligibility({
+      textBased,
+      encrypted,
+      hasXfa,
+      annotationCount: totalAnnotations,
+      imageCount: totalImages,
+      linkCount: totalLinks,
+      tableCount: totalTables,
+      safetyInspection,
+    }).allowed;
 
     if (!title) {
       addFinding({
@@ -586,7 +635,7 @@ export async function analyzePdf(
         method: "PDF.js document information and XMP metadata inspection.",
         guidance: [
           "Enter a concise title that identifies the document's topic or purpose.",
-          "Apply the metadata-only fix to a new PDF version.",
+          "Create a restricted metadata revision as a new PDF version.",
           "Recheck that the viewer displays the document title and that the title is accurate.",
         ],
         standardReferences: referencesFor("title", profileIds),
@@ -937,6 +986,7 @@ export async function analyzePdf(
         hasSignatures,
         hasXfa,
         hasJavaScript,
+        safetyInspection,
       },
       pages,
       findings: sortFindings(findings),

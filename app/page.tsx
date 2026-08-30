@@ -120,7 +120,7 @@ export default function Home() {
             <li>
               <span>03</span><ArrowsClockwise weight="duotone" aria-hidden="true" />
               <h3>Version, recheck, and export</h3>
-              <p>Write only restricted metadata fixes, preserve the original, rerun checks, and export accessible HTML plus JSON evidence.</p>
+              <p>Create a strictly preflighted metadata revision, preserve the original, rerun checks, and export accessible HTML plus JSON evidence.</p>
             </li>
           </ol>
         </section>
