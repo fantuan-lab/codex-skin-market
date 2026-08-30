@@ -2,13 +2,18 @@ import {
   ArrowRight,
   ArrowsClockwise,
   Buildings,
+  CheckCircle,
+  ClipboardText,
   FilePdf,
   Files,
   GraduationCap,
   Handshake,
   LockKey,
+  MapPin,
+  Package,
   ShieldCheck,
   UserFocus,
+  WarningCircle,
 } from "@phosphor-icons/react/dist/ssr";
 import { notFound } from "next/navigation";
 import { getUiCopy, type Locale } from "@/lib/i18n";
@@ -102,6 +107,74 @@ export default async function Home({
         </ol>
       </section>
 
+      <section className="product-proof-section" aria-labelledby="product-proof-title">
+        <div className="section-heading split-heading">
+          <div>
+            <p className="section-label">{copy.productProof.label}</p>
+            <h2 id="product-proof-title">{copy.productProof.title}</h2>
+          </div>
+          <p>{copy.productProof.intro}</p>
+        </div>
+        <div className="product-proof-canvas">
+          <article className="proof-page">
+            <div className="proof-page-topline">
+              <span>{copy.productProof.fixtureLabel}</span>
+              <strong>{copy.productProof.pageLabel}</strong>
+            </div>
+            <div className="proof-page-sheet">
+              <FilePdf weight="duotone" aria-hidden="true" />
+              <h3>{copy.productProof.pageTitle}</h3>
+              <p>{copy.productProof.pageCopy}</p>
+              <div className="proof-issue-location">
+                <MapPin weight="fill" aria-hidden="true" />
+                <span>{copy.productProof.findingLocation}</span>
+              </div>
+            </div>
+          </article>
+
+          <article className="proof-finding">
+            <p>{copy.productProof.findingLabel}</p>
+            <WarningCircle weight="duotone" aria-hidden="true" />
+            <h3>{copy.productProof.findingTitle}</h3>
+            <dl>
+              <div>
+                <dt>{copy.workspace.location}</dt>
+                <dd>{copy.productProof.findingLocation}</dd>
+              </div>
+              <div>
+                <dt>{copy.workspace.evidence}</dt>
+                <dd>{copy.productProof.findingEvidence}</dd>
+              </div>
+              <div>
+                <dt>{copy.workspace.method}</dt>
+                <dd>{copy.productProof.findingMethod}</dd>
+              </div>
+            </dl>
+            <div className="proof-review-state">
+              <UserFocus weight="duotone" aria-hidden="true" />
+              <span>
+                <small>{copy.productProof.reviewLabel}</small>
+                <strong>{copy.productProof.reviewTitle}</strong>
+              </span>
+            </div>
+            <p className="proof-review-copy">{copy.productProof.reviewCopy}</p>
+          </article>
+
+          <aside className="proof-pack" aria-labelledby="proof-pack-title">
+            <Package weight="duotone" aria-hidden="true" />
+            <h3 id="proof-pack-title">{copy.productProof.packTitle}</h3>
+            <ul>
+              {copy.productProof.packItems.map((item) => (
+                <li key={item}>
+                  <CheckCircle weight="fill" aria-hidden="true" /> {item}
+                </li>
+              ))}
+            </ul>
+            <ClipboardText weight="duotone" aria-hidden="true" />
+          </aside>
+        </div>
+      </section>
+
       <section className="scope-section" aria-labelledby="scope-title">
         <div className="section-heading split-heading">
           <div>
@@ -134,21 +207,33 @@ export default async function Home({
         aria-labelledby="standards-title"
       >
         <div className="standards-intro">
-          <p className="section-label light-label">{copy.standards.label}</p>
+          <p className="section-label">{copy.standards.label}</p>
           <h2 id="standards-title">{copy.standards.title}</h2>
           <p>{copy.standards.intro}</p>
         </div>
-        <div className="standards-list">
-          {copy.standards.cards.map((card, index) => (
-            <article key={card.title}>
-              <span>{card.label}</span>
-              <h3>{card.title}</h3>
-              <p>{card.copy}</p>
-              <a href={standardLinks[index]} target="_blank" rel="noreferrer">
-                {card.link} <ArrowRight aria-hidden="true" />
-              </a>
-            </article>
-          ))}
+        <div className="standards-content">
+          {/* Vinext serves this static asset directly; its image optimizer is not available locally. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="standards-illustration"
+            src="/landing/standards-books.png"
+            width={720}
+            height={420}
+            alt={copy.standards.illustrationAlt}
+            loading="eager"
+          />
+          <div className="standards-list">
+            {copy.standards.cards.map((card, index) => (
+              <article key={card.title}>
+                <span>{card.label}</span>
+                <h3>{card.title}</h3>
+                <p>{card.copy}</p>
+                <a href={standardLinks[index]} target="_blank" rel="noreferrer">
+                  {card.link} <ArrowRight aria-hidden="true" />
+                </a>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -196,8 +281,6 @@ export default async function Home({
               <p>{card.copy}</p>
               {index === 0 ? (
                 <a href="#analyzer">{card.action}</a>
-              ) : index === 1 ? (
-                <a href="mailto:pilot@cleartag.invalid">{card.action}</a>
               ) : (
                 <span className="disabled-link">{card.action}</span>
               )}

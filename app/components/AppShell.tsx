@@ -82,13 +82,26 @@ export function AppShell({
       </header>
 
       <main id="main-content">
-        <PdfExperience locale={locale} />
-        {children}
+        <PdfExperience locale={locale}>{children}</PdfExperience>
       </main>
 
       <footer className="site-footer">
-        <p>{copy.footer.workingName}</p>
-        <p>
+        <div className="footer-brand">
+          <span className="brand-mark" aria-hidden="true">
+            <Tag weight="fill" />
+          </span>
+          <div>
+            <strong>ClearTag</strong>
+            <p>{copy.footer.workingName}</p>
+          </div>
+        </div>
+        <nav aria-label={copy.footer.navigationAria}>
+          <a href="#workflow">{copy.navigation.workflow}</a>
+          <a href="#standards">{copy.navigation.standards}</a>
+          <a href="#security">{copy.navigation.security}</a>
+          <a href="#pricing">{copy.navigation.pricing}</a>
+        </nav>
+        <p className="footer-retention">
           <LockKey aria-hidden="true" /> {copy.footer.retention}
         </p>
       </footer>

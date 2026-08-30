@@ -1,14 +1,17 @@
 "use client";
 
 import {
+  ArrowRight,
   CheckCircle,
   FileArrowUp,
   FilePdf,
+  Fingerprint,
   LockKey,
   ShieldCheck,
+  UserFocus,
   X,
 } from "@phosphor-icons/react";
-import { useId, useRef, useState } from "react";
+import { type ReactNode, useId, useRef, useState } from "react";
 import {
   formatBytes,
   getStandardProfileCopy,
@@ -30,7 +33,13 @@ import { AnalysisWorkspace } from "./Workspace";
 
 const DEFAULT_PROFILES: StandardProfileId[] = ["wcag21", "section508"];
 
-export function PdfExperience({ locale }: { locale: Locale }) {
+export function PdfExperience({
+  children,
+  locale,
+}: {
+  children: ReactNode;
+  locale: Locale;
+}) {
   const copy = getUiCopy(locale);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -142,6 +151,14 @@ export function PdfExperience({ locale }: { locale: Locale }) {
           </p>
           <h1 id="hero-title">{copy.hero.title}</h1>
           <p className="hero-lead">{copy.hero.lead}</p>
+          <div className="hero-actions">
+            <a className="hero-primary-action" href="#analyzer">
+              {copy.hero.primaryAction} <ArrowRight aria-hidden="true" />
+            </a>
+            <a className="hero-secondary-action" href="#workflow">
+              {copy.hero.secondaryAction} <ArrowRight aria-hidden="true" />
+            </a>
+          </div>
           <ul className="hero-points" aria-label={copy.hero.boundariesAria}>
             {copy.hero.boundaries.map((boundary) => (
               <li key={boundary}>
@@ -156,12 +173,66 @@ export function PdfExperience({ locale }: { locale: Locale }) {
           </p>
         </div>
 
-        <div id="analyzer" className="hero-analyzer">
+        <aside className="hero-preview" aria-label={copy.hero.preview.aria}>
+          <div className="preview-topline">
+            <span>{copy.hero.preview.label}</span>
+            <span>{copy.hero.preview.pageCount}</span>
+          </div>
+          <div className="preview-document">
+            <FilePdf weight="duotone" aria-hidden="true" />
+            <strong>{copy.hero.preview.fileName}</strong>
+          </div>
+          <div className="preview-body">
+            <div className="preview-queue" aria-label={copy.hero.preview.aria}>
+              {copy.hero.preview.rows.map((row, index) => (
+                <div className={index === 0 ? "is-selected" : undefined} key={row.label}>
+                  {index === 0 ? (
+                    <CheckCircle weight="fill" aria-hidden="true" />
+                  ) : (
+                    <UserFocus weight="duotone" aria-hidden="true" />
+                  )}
+                  <span>
+                    <strong>{row.label}</strong>
+                    <small>{row.status}</small>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="preview-detail">
+              <span>{copy.hero.preview.selectedFinding}</span>
+              <h2>{copy.hero.preview.title}</h2>
+              <p>{copy.hero.preview.copy}</p>
+              <strong>
+                <CheckCircle weight="fill" aria-hidden="true" />
+                {copy.hero.preview.reviewer}
+              </strong>
+            </div>
+          </div>
+          <div className="preview-footer">
+            <Fingerprint aria-hidden="true" />
+            <span>{copy.hero.preview.fingerprint}</span>
+          </div>
+        </aside>
+      </section>
+
+      {children}
+
+      <section id="analyzer" className="analyzer-section" aria-labelledby="analyzer-title">
+        <div className="analyzer-intro">
+          <p className="section-label">{copy.intake.sectionLabel}</p>
+          <h2 id="analyzer-title">{copy.intake.sectionTitle}</h2>
+          <p>{copy.intake.sectionIntro}</p>
+          <p className="analyzer-boundary">
+            <ShieldCheck weight="duotone" aria-hidden="true" />
+            {copy.hero.boundaryNote}
+          </p>
+        </div>
+        <div className="hero-analyzer">
           <section className="intake-card" aria-labelledby="intake-title">
             <div className="intake-heading">
               <div>
                 <p className="card-kicker">{copy.intake.kicker}</p>
-                <h2 id="intake-title">{copy.intake.title}</h2>
+                <h3 id="intake-title">{copy.intake.title}</h3>
               </div>
               <span className="privacy-chip">
                 <LockKey weight="bold" aria-hidden="true" /> {copy.intake.privacyChip}
