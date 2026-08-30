@@ -59,7 +59,8 @@ describe("bilingual UI copy", () => {
     expect(english.hero.primaryAction).toBe("Analyze locally");
     expect(chinese.hero.primaryAction).toBe("在浏览器中分析 PDF");
     expect(english.navigation.mobileAria).toBe("Mobile section navigation");
-    expect(chinese.navigation.openAnalyzerShort).toBe("分析");
+    expect(english.navigation.openAnalyzer).toBe("Sign in");
+    expect(chinese.navigation.openAnalyzerShort).toBe("登录");
     expect(english.hero.preview.location).toContain("Page 12");
     expect(chinese.hero.preview.method).toBe("批注与结构检查");
     expect(english.hero.preview.label).toBe("Illustrative UI example · not scan output");
@@ -74,6 +75,17 @@ describe("bilingual UI copy", () => {
     expect(english.standards.illustrationAlt).toContain("WCAG 2.2");
     expect(chinese.footer.navigationAria).toBe("页脚导航");
     expect(chinese.report.htmlLang).toBe("zh-CN");
+
+    expect(english.auth.signInAction).toBe("Sign in with email");
+    expect(english.auth.googleAction).toBe("Continue with Google");
+    expect(english.auth.genericError).not.toMatch(/account|email.*exists/i);
+    expect(english.auth.configurationMissing).toContain("not configured");
+    expect(english.auth.pdfPrivacy).toContain("not sent to Supabase");
+    expect(english.auth.googlePrivacy).toContain("does not request access to Google Drive");
+    expect(chinese.auth.signInAction).toBe("使用邮箱登录");
+    expect(chinese.auth.googleAction).toBe("使用 Google 账号继续");
+    expect(chinese.auth.configurationMissing).toContain("尚未配置");
+    expect(chinese.account.signOut).toBe("退出登录");
 
     expect(getStandardProfileCopy("section508", "zh")).toMatchObject({
       shortName: "Section 508",

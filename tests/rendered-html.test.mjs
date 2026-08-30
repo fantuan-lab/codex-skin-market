@@ -34,14 +34,13 @@ function assertLandingOrder(html) {
     'class="security-section"',
     'class="pricing-section"',
     'class="final-boundary"',
-    'class="analyzer-section"',
   ];
   const positions = markers.map((marker) => html.indexOf(marker));
   assert.ok(positions.every((position) => position >= 0), `missing landing marker: ${positions}`);
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
 }
 
-test("server-renders the English ClearTag landing page and local analyzer", async () => {
+test("server-renders the English ClearTag landing page without exposing the workspace", async () => {
   const response = await render("/");
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -51,12 +50,12 @@ test("server-renders the English ClearTag landing page and local analyzer", asyn
   assert.match(html, /<title>ClearTag · Guided PDF remediation<\/title>/i);
   assert.match(html, /Turn accessibility findings into reviewable fixes and defensible evidence/);
   assert.match(html, /Illustrative UI example · not scan output/);
-  assert.match(html, /Choose or drop a PDF/);
+  assert.match(html, /href="\/workspace"[^>]*>[^<]*(?:<[^>]+>)*Analyze locally/i);
   assert.match(html, /aria-label="Language"/);
   assert.match(html, /href="\/zh"/i);
   assert.match(html, /hrefLang="zh-CN"/i);
   assert.match(html, /Evidence mapping/);
-  assert.match(html, /WCAG 2\.1 AA/);
+  assert.match(html, /WCAG 2\.1 A \/ AA/);
   assert.match(html, /Section 508/);
   assert.match(html, /PDF\/UA-1/);
   assert.match(html, /EN 301 549/);
@@ -70,6 +69,8 @@ test("server-renders the English ClearTag landing page and local analyzer", asyn
   assert.match(html, /Skip to main content/);
   assertLandingOrder(html);
   assertBrandIcons(html);
+  assert.doesNotMatch(html, /Choose or drop a PDF/);
+  assert.doesNotMatch(html, /class="analyzer-section"/);
   assert.doesNotMatch(html, /all PDFs (?:must|need to) be remediated/i);
   assert.doesNotMatch(html, /automatically certif|guaranteed compliant|100% compliant/i);
   assert.doesNotMatch(html, /cleartag\.invalid/i);
@@ -86,11 +87,11 @@ test("server-renders a complete Chinese route with the correct document language
   assert.match(html, /<title>ClearTag · 引导式 PDF 无障碍修复<\/title>/i);
   assert.match(html, /把无障碍问题转化为可复核的修复和可追溯的证据/);
   assert.match(html, /界面示意 · 并非扫描结果/);
-  assert.match(html, /选择或拖入 PDF/);
+  assert.match(html, /href="\/zh\/workspace"[^>]*>[^<]*(?:<[^>]+>)*在浏览器中分析 PDF/i);
   assert.match(html, /aria-label="语言"/);
   assert.match(html, /href="\/"/i);
   assert.match(html, /hrefLang="en"/i);
-  assert.match(html, /WCAG 2\.1 AA/);
+  assert.match(html, /WCAG 2\.1 A \/ AA/);
   assert.match(html, /Section 508/);
   assert.match(html, /PDF\/UA-1/);
   assert.match(html, /EN 301 549/);
@@ -102,5 +103,54 @@ test("server-renders a complete Chinese route with the correct document language
   assert.match(html, /aria-label="移动端章节导航"/);
   assertLandingOrder(html);
   assertBrandIcons(html);
+  assert.doesNotMatch(html, /选择或拖入 PDF/);
+  assert.doesNotMatch(html, /class="analyzer-section"/);
   assert.doesNotMatch(html, /一键(?:实现|完成)合规|自动获得认证|保证所有 PDF 符合|100% 合规/i);
+});
+
+test("login pages fail closed when public authentication configuration is missing", async () => {
+  for (const [pathname, language, heading, submit, google] of [
+    [
+      "/login?returnTo=%2Fworkspace",
+      "en",
+      "Sign in to keep your review workspace private.",
+      "Sign in with email",
+      "Continue with Google",
+    ],
+    [
+      "/zh/login?returnTo=%2Fzh%2Fworkspace",
+      "zh-CN",
+      "登录后，安全访问你的复核工作区。",
+      "使用邮箱登录",
+      "使用 Google 账号继续",
+    ],
+  ]) {
+    const response = await render(pathname);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, new RegExp(`<html[^>]+lang="${language}"`, "i"));
+    assert.match(html, new RegExp(heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(html, new RegExp(`${submit.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\/button>`));
+    assert.match(html, new RegExp(`${google.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\/button>`));
+    // The browser-only configuration check avoids a hydration mismatch. Until
+    // it runs, SSR must still deny every credential action.
+    assert.match(html, /<input(?=[^>]*name="email")(?=[^>]*disabled="")[^>]*>/i);
+    assert.match(html, /<input(?=[^>]*name="password")(?=[^>]*disabled="")[^>]*>/i);
+    assert.match(html, /<button(?=[^>]*class="auth-submit")(?=[^>]*disabled="")[^>]*>/i);
+    assert.match(html, /<button(?=[^>]*class="google-auth-button")(?=[^>]*disabled="")[^>]*>/i);
+    assertBrandIcons(html);
+  }
+});
+
+test("protected workspaces redirect to localized login with private no-store headers", async () => {
+  for (const [pathname, expectedLocation] of [
+    ["/workspace", "/login?returnTo=%2Fworkspace"],
+    ["/zh/workspace", "/zh/login?returnTo=%2Fzh%2Fworkspace"],
+  ]) {
+    const response = await render(pathname);
+    assert.equal(response.status, 303);
+    assert.equal(new URL(response.headers.get("location")).pathname + new URL(response.headers.get("location")).search, expectedLocation);
+    assert.match(response.headers.get("cache-control") ?? "", /private/);
+    assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+  }
 });

@@ -18,12 +18,23 @@ export default defineConfig({
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },
-  webServer: {
-    command: "npm run dev -- --port 43172",
-    url: "http://localhost:43172",
-    reuseExistingServer: false,
-    timeout: 120_000,
-    stdout: "pipe",
-    stderr: "pipe",
-  },
+  webServer: [
+    {
+      command: "node tests/auth-stub-server.mjs",
+      url: "http://127.0.0.1:43173/__test/health",
+      reuseExistingServer: false,
+      timeout: 30_000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+    {
+      command:
+        "CLOUDFLARE_INCLUDE_PROCESS_ENV=true NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:43173 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_cleartag_e2e npm run dev -- --port 43172",
+      url: "http://localhost:43172",
+      reuseExistingServer: false,
+      timeout: 120_000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  ],
 });

@@ -5,6 +5,10 @@ import path from "node:path";
 import JSZip from "jszip";
 import { PDFDocument, PDFName, StandardFonts } from "pdf-lib";
 
+const TEST_EMAIL = "reviewer@example.com";
+const TEST_PASSWORD = "Correct-Horse-42!";
+const AUTH_STUB_ORIGIN = "http://127.0.0.1:43173";
+
 function collectRuntimeErrors(page: Page) {
   const errors: string[] = [];
   page.on("console", (message) => {
@@ -26,7 +30,34 @@ async function expectNoAxeViolations(page: Page) {
   ).toEqual([]);
 }
 
-test("landing page is meaningful, keyboard reachable, responsive, and axe-clean", async ({
+async function signInWithEmail(page: Page, locale: "en" | "zh" = "en") {
+  const loginPath = locale === "zh" ? "/zh/login" : "/login";
+  const workspacePath = locale === "zh" ? "/zh/workspace" : "/workspace";
+  const emailLabel = locale === "zh" ? "工作邮箱" : "Work email";
+  const passwordLabel = locale === "zh" ? "密码" : "Password";
+  const submitLabel = locale === "zh" ? "使用邮箱登录" : "Sign in with email";
+
+  await page.goto(`${loginPath}?returnTo=${encodeURIComponent(workspacePath)}`, {
+    waitUntil: "networkidle",
+  });
+  await page.getByLabel(emailLabel).fill(TEST_EMAIL);
+  await page.getByRole("textbox", { name: passwordLabel, exact: true }).fill(TEST_PASSWORD);
+  await page.getByRole("button", { name: submitLabel, exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`${workspacePath.replaceAll("/", "\\/")}$`), {
+    timeout: 30_000,
+  });
+  await expect(page.getByText(TEST_EMAIL, { exact: true })).toBeVisible();
+}
+
+async function tabUntilFocused(page: Page, locator: ReturnType<Page["locator"]>) {
+  for (let index = 0; index < 24; index += 1) {
+    await page.keyboard.press("Tab");
+    if (await locator.evaluate((element) => element === document.activeElement)) return;
+  }
+  throw new Error("The expected control was not reachable in the keyboard tab order.");
+}
+
+test("landing page is meaningful, login-gated, responsive, and axe-clean", async ({
   page,
 }) => {
   const errors = collectRuntimeErrors(page);
@@ -52,8 +83,14 @@ test("landing page is meaningful, keyboard reachable, responsive, and axe-clean"
   await expect(page.locator(".standards-illustration")).toBeVisible();
   await expect(page.getByRole("link", { name: "Analyze locally", exact: true })).toHaveAttribute(
     "href",
-    "#analyzer",
+    "/workspace",
   );
+  await expect(page.getByRole("link", { name: "Sign in", exact: true }).first()).toHaveAttribute(
+    "href",
+    "/workspace",
+  );
+  await expect(page.locator(".analyzer-section")).toHaveCount(0);
+  await expect(page.getByLabel("Choose or drop a PDF")).toHaveCount(0);
   const landingOrder = await page.evaluate(() =>
     [
       ".hero",
@@ -66,7 +103,6 @@ test("landing page is meaningful, keyboard reachable, responsive, and axe-clean"
       ".security-section",
       ".pricing-section",
       ".final-boundary",
-      ".analyzer-section",
     ].map((selector) => document.querySelector(selector)?.getBoundingClientRect().top ?? -1),
   );
   expect(landingOrder.every((top) => top >= 0)).toBe(true);
@@ -96,7 +132,7 @@ test("landing page is meaningful, keyboard reachable, responsive, and axe-clean"
   }));
   expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
   await expect(
-    page.getByRole("banner").getByRole("link", { name: "Open local analyzer", exact: true }),
+    page.getByRole("banner").getByRole("link", { name: "Sign in", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("navigation", { name: "Mobile section navigation" }),
@@ -111,24 +147,153 @@ test("landing page is meaningful, keyboard reachable, responsive, and axe-clean"
     client: document.documentElement.clientWidth,
   }));
   expect(narrowWidths.scroll).toBeLessThanOrEqual(narrowWidths.client + 1);
-  await expect(page.locator(".header-cta-short")).toHaveText("Analyze");
+  await expect(page.locator(".header-cta-short")).toHaveText("Sign in");
   await expect(page.locator(".header-cta-short")).toBeVisible();
 });
 
-test("Chinese route, language switching, workspace state, and localized evidence stay accessible", async ({
+test("email login is generic on failure, persists on refresh, and signs out cleanly", async ({
   page,
 }) => {
   const errors = collectRuntimeErrors(page);
-  await page.goto("/zh", { waitUntil: "networkidle" });
+  await page.goto("/login?returnTo=%2Fworkspace", { waitUntil: "networkidle" });
 
-  await expect(page).toHaveURL(/\/zh$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "Sign in to keep your review workspace private.",
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: "Create account", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
+  await expectNoAxeViolations(page);
+
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
+  await tabUntilFocused(page, page.getByLabel("Work email"));
+  await page.keyboard.type(TEST_EMAIL);
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("textbox", { name: "Password", exact: true })).toBeFocused();
+  await page.keyboard.type("incorrect-password");
+  await page.getByRole("button", { name: "Sign in with email", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveText(
+    "We couldn’t complete that request. Check your details and try again.",
+  );
+  await expect(page).toHaveURL(/\/login\?returnTo=%2Fworkspace$/);
+  // Chromium reports the deliberately rejected token request as a console
+  // resource error. The generic UI response above is the behavior under test;
+  // subsequent unexpected runtime errors must still fail the scenario.
+  errors.length = 0;
+
+  await page.getByRole("textbox", { name: "Password", exact: true }).fill(TEST_PASSWORD);
+  await page.getByRole("button", { name: "Sign in with email", exact: true }).click();
+  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page.getByRole("heading", { level: 1, name: "PDF review workspace" })).toBeVisible();
+  await expect(page.getByText(TEST_EMAIL, { exact: true })).toBeVisible();
+  expect((await page.context().cookies()).some((cookie) => cookie.name.includes("auth-token"))).toBe(
+    true,
+  );
+  await expectNoAxeViolations(page);
+
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page).toHaveURL(/\/workspace$/);
+  await expect(page.getByText(TEST_EMAIL, { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "Turn accessibility findings",
+  );
+  await page.goto("/workspace", { waitUntil: "networkidle" });
+  await expect(page).toHaveURL(/\/login\?returnTo=%2Fworkspace$/);
+  await expect(page.getByRole("button", { name: "Sign in with email" })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("Google login requests only basic identity scopes and a safe PKCE callback", async ({
+  page,
+}) => {
+  await page.goto("/login?returnTo=%2Fworkspace", { waitUntil: "networkidle" });
+  await page.route(`${AUTH_STUB_ORIGIN}/auth/v1/authorize**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: "<!doctype html><html><body><p>Local OAuth authorization request captured.</p></body></html>",
+    });
+  });
+
+  const authorizeRequestPromise = page.waitForRequest((request) =>
+    request.url().startsWith(`${AUTH_STUB_ORIGIN}/auth/v1/authorize`),
+  );
+  await page.getByRole("button", { name: "Continue with Google" }).click();
+  const authorizeRequest = await authorizeRequestPromise;
+  const authorizeUrl = new URL(authorizeRequest.url());
+
+  expect(authorizeUrl.searchParams.get("provider")).toBe("google");
+  expect(authorizeUrl.searchParams.get("scopes")?.split(" ").sort()).toEqual([
+    "email",
+    "openid",
+    "profile",
+  ]);
+  expect(authorizeUrl.searchParams.get("redirect_to")).toBe(
+    "http://localhost:43172/auth/callback?returnTo=%2Fworkspace",
+  );
+  expect(authorizeUrl.searchParams.get("code_challenge")).toBeTruthy();
+  expect(authorizeUrl.searchParams.get("code_challenge_method")).toBe("s256");
+  expect(authorizeUrl.searchParams.has("access_type")).toBe(false);
+  expect(authorizeUrl.searchParams.has("prompt")).toBe(false);
+  await expect(page).toHaveURL(new RegExp(`^${AUTH_STUB_ORIGIN.replaceAll(".", "\\.")}`));
+});
+
+test("Chinese login is localized, axe-clean, and usable at 320px", async ({ page }) => {
+  const errors = collectRuntimeErrors(page);
+  await page.setViewportSize({ width: 320, height: 760 });
+  await page.goto("/zh/login?returnTo=%2Fzh%2Fworkspace", { waitUntil: "networkidle" });
+
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "登录后，安全访问你的复核工作区。" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "登录", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: "注册账号", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "使用邮箱登录", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "使用 Google 账号继续" })).toBeEnabled();
+  await page.getByRole("button", { name: "注册账号", exact: true }).click();
+  await expect(page.getByRole("button", { name: "使用邮箱注册", exact: true })).toBeVisible();
+  await expect(page.getByText("注册账号时，请使用至少 8 个字符的密码。")).toBeVisible();
+
+  const widths = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    client: document.documentElement.clientWidth,
+  }));
+  expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
+  await expectNoAxeViolations(page);
+  await page.screenshot({ path: "test-results/cleartag-login-mobile.png", fullPage: true });
+  expect(errors).toEqual([]);
+});
+
+test("Chinese route, language switching boundary, and localized evidence stay accessible", async ({
+  page,
+}) => {
+  const errors = collectRuntimeErrors(page);
+  await signInWithEmail(page, "zh");
+
+  await expect(page).toHaveURL(/\/zh\/workspace$/);
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /把无障碍问题转化为可复核的修复和可追溯的证据/,
+      name: "PDF 复核工作区",
     }),
   ).toBeVisible();
+  await expect(page.getByText(TEST_EMAIL, { exact: true })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "语言" })).toBeVisible();
   await expect(page.getByRole("link", { name: "中文", exact: true })).toHaveAttribute(
     "aria-current",
@@ -148,22 +313,6 @@ test("Chinese route, language switching, workspace state, and localized evidence
       name: /表单字段对象 未检测到 分析器未暴露此信号.*独立预检真实字节/,
     }),
   ).toBeVisible();
-  const sourceFingerprint = await page.locator(".workspace-meta code").textContent();
-
-  await page.getByRole("link", { name: "English", exact: true }).click();
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(
-    page.getByRole("heading", { level: 2, name: "known-accessibility-issues.pdf" }),
-  ).toBeVisible();
-  await expect(page.getByRole("button", { name: /Document title metadata is missing/ })).toBeVisible();
-  await expect(page.locator(".workspace-meta code")).toHaveText(sourceFingerprint!);
-
-  await page.getByRole("link", { name: "中文", exact: true }).click();
-  await expect(page).toHaveURL(/\/zh$/);
-  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
-  await expect(page.getByRole("button", { name: /缺少文档标题元数据/ })).toBeVisible();
-  await expect(page.locator(".workspace-meta code")).toHaveText(sourceFingerprint!);
 
   const evidenceDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "下载证据包" }).click();
@@ -185,6 +334,22 @@ test("Chinese route, language switching, workspace state, and localized evidence
   });
   expect(evidence.readme).toContain("不是符合性证书");
 
+  await page.getByRole("link", { name: "English", exact: true }).click();
+  await expect(page).toHaveURL(/\/workspace$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.getByRole("heading", { level: 1, name: "PDF review workspace" })).toBeVisible();
+  await expect(page.getByText(TEST_EMAIL, { exact: true })).toBeVisible();
+  await expect(page.getByText(/changing its language clears the current in-memory review/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "known-accessibility-issues.pdf" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Known-issues sample" })).toBeVisible();
+
+  await page.getByRole("link", { name: "中文", exact: true }).click();
+  await expect(page).toHaveURL(/\/zh\/workspace$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  await expect(page.getByText(TEST_EMAIL, { exact: true })).toBeVisible();
+  await expect(page.getByText(/切换工作区语言会清除当前内存中的复核状态/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "known-accessibility-issues.pdf" })).toHaveCount(0);
+
   await expectNoAxeViolations(page);
   expect(errors).toEqual([]);
 });
@@ -193,7 +358,7 @@ test("Chinese restricted revision fails closed on a hidden raw-byte risk", async
   page,
 }) => {
   const errors = collectRuntimeErrors(page);
-  await page.goto("/zh", { waitUntil: "networkidle" });
+  await signInWithEmail(page, "zh");
   const riskyPdf = await createMetadataPdfWithOutlines();
   await page.getByLabel("选择或拖入 PDF").setInputFiles({
     name: "hidden-outlines.pdf",
@@ -230,7 +395,7 @@ test("real PDF analysis, human status, safe writeback, and evidence download wor
   page,
 }) => {
   const errors = collectRuntimeErrors(page);
-  await page.goto("/", { waitUntil: "networkidle" });
+  await signInWithEmail(page);
   await page.getByRole("button", { name: "Known-issues sample" }).click();
 
   await expect(
@@ -308,7 +473,7 @@ test("real PDF analysis, human status, safe writeback, and evidence download wor
 });
 
 test("the scan fixture produces real OCR-risk evidence without claiming OCR", async ({ page }) => {
-  await page.goto("/", { waitUntil: "networkidle" });
+  await signInWithEmail(page);
   await page.getByLabel("Choose or drop a PDF").setInputFiles(
     path.join(process.cwd(), "public/fixtures/image-only-scan.pdf"),
   );
