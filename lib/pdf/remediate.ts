@@ -4,7 +4,17 @@ import type {
   PDFObject,
   PDFStream,
 } from "pdf-lib";
-import { fingerprintBytes } from "./analyze";
+import {
+  fingerprintBytes,
+  MAX_FILE_BYTES,
+  MAX_OPERATOR_COUNT,
+  MAX_PAGES,
+} from "./analyze";
+import {
+  readPdfHeaderVersion,
+  RESTRICTED_REVISION_PDF_VERSION,
+  restrictedMetadataEligibility,
+} from "./safety";
 import type { PdfAnalysis } from "./types";
 
 type PdfLibModule = typeof import("pdf-lib");
@@ -17,6 +27,11 @@ export interface MetadataFixes {
 export interface MetadataRevision {
   bytes: Uint8Array;
   changes: string[];
+}
+
+export interface MetadataRevisionOptions {
+  /** May only lower the production operator budget; useful for stricter callers and tests. */
+  operatorLimit?: number;
 }
 
 const REJECTED_KEYS = new Map<string, string>([
@@ -124,13 +139,20 @@ export async function createMetadataRevision(
   input: Uint8Array,
   analysis: PdfAnalysis,
   fixes: MetadataFixes,
+  options: MetadataRevisionOptions = {},
 ): Promise<MetadataRevision> {
+  if (input.byteLength > MAX_FILE_BYTES) {
+    throw new Error(
+      `Restricted metadata revision accepts files up to ${MAX_FILE_BYTES / (1024 * 1024)} MB.`,
+    );
+  }
   const inputFingerprint = await fingerprintBytes(input);
   if (inputFingerprint !== analysis.fingerprint) {
     throw new Error(
       "The selected bytes do not match the analyzed file fingerprint. Analyze this exact version before writeback.",
     );
   }
+  assertAnalysisAllowsRestrictedRevision(analysis);
 
   const title = fixes.title?.trim();
   const language = fixes.language?.trim();
@@ -144,10 +166,16 @@ export async function createMetadataRevision(
 
   const pdfLib = await import("pdf-lib");
   const originalBytes = input.slice();
+  const operatorLimit = restrictedOperatorLimit(options.operatorLimit);
+  assertSupportedPdfHeader(originalBytes);
   const source = await strictLoad(originalBytes.slice(), pdfLib, "input");
   assertRestrictedMetadataPreflight(source, pdfLib);
-  await assertNoRestrictedPageOperators(originalBytes.slice());
-  const before = protectedDocumentSnapshot(source, pdfLib);
+  await assertNoRestrictedPageOperators(originalBytes.slice(), operatorLimit);
+  const snapshotAllowances = {
+    title: Boolean(title),
+    language: Boolean(language),
+  };
+  const before = await protectedDocumentSnapshot(source, pdfLib, snapshotAllowances);
   const changes: string[] = [];
 
   if (title) {
@@ -172,9 +200,10 @@ export async function createMetadataRevision(
   }
 
   const reopened = await strictLoad(bytes.slice(), pdfLib, "output");
-  await assertNoRestrictedPageOperators(bytes.slice());
+  assertSupportedPdfHeader(bytes);
+  await assertNoRestrictedPageOperators(bytes.slice(), operatorLimit);
   assertRestrictedMetadataPreflight(reopened, pdfLib);
-  const after = protectedDocumentSnapshot(reopened, pdfLib);
+  const after = await protectedDocumentSnapshot(reopened, pdfLib, snapshotAllowances);
   if (JSON.stringify(before) !== JSON.stringify(after)) {
     throw new Error(
       "The restricted metadata revision changed a protected document object, so the output was discarded.",
@@ -191,6 +220,68 @@ export async function createMetadataRevision(
   return { bytes, changes };
 }
 
+function restrictedOperatorLimit(requested?: number) {
+  if (requested === undefined) return MAX_OPERATOR_COUNT;
+  if (!Number.isSafeInteger(requested) || requested < 1) {
+    throw new Error("The restricted operator limit must be a positive integer.");
+  }
+  return Math.min(requested, MAX_OPERATOR_COUNT);
+}
+
+function assertAnalysisAllowsRestrictedRevision(analysis: PdfAnalysis) {
+  if (
+    !analysis.metadata.safetyInspection ||
+    analysis.pageCount !== analysis.pages.length
+  ) {
+    throw new Error(
+      "The analysis record is incomplete, so restricted metadata revision was refused.",
+    );
+  }
+  const sum = (key: "annotationCount" | "widgetAnnotations" | "imagePaintOperations" | "linkAnnotations" | "tableCount") => {
+    let total = 0;
+    for (const page of analysis.pages) {
+      const value = page[key];
+      if (!Number.isSafeInteger(value) || value < 0) {
+        throw new Error(
+          "The analysis record contains an inconclusive page signal, so restricted metadata revision was refused.",
+        );
+      }
+      total += value;
+    }
+    return total;
+  };
+  const eligibility = restrictedMetadataEligibility({
+    textBased: analysis.textBased,
+    pdfVersion: analysis.metadata.pdfVersion,
+    tagged: analysis.metadata.tagged,
+    encrypted: analysis.metadata.encrypted,
+    hasAcroForm: analysis.metadata.hasAcroForm,
+    hasSignatures: analysis.metadata.hasSignatures,
+    hasXfa: analysis.metadata.hasXfa,
+    hasJavaScript: analysis.metadata.hasJavaScript,
+    annotationCount: sum("annotationCount"),
+    widgetCount: sum("widgetAnnotations"),
+    imageCount: sum("imagePaintOperations"),
+    linkCount: sum("linkAnnotations"),
+    tableCount: sum("tableCount"),
+    safetyInspection: analysis.metadata.safetyInspection,
+  });
+  if (!eligibility.allowed) {
+    throw new Error(
+      `The analysis is not eligible for restricted metadata revision: ${eligibility.reasons.join(" ")}`,
+    );
+  }
+}
+
+function assertSupportedPdfHeader(bytes: Uint8Array) {
+  const version = readPdfHeaderVersion(bytes);
+  if (version !== RESTRICTED_REVISION_PDF_VERSION) {
+    throw new Error(
+      `Restricted metadata revision currently supports PDF ${RESTRICTED_REVISION_PDF_VERSION} only; the input header declared ${version ? `PDF ${version}` : "no supported PDF version"}.`,
+    );
+  }
+}
+
 async function strictLoad(
   bytes: Uint8Array,
   pdfLib: PdfLibModule,
@@ -204,7 +295,7 @@ async function strictLoad(
     });
   } catch {
     throw new Error(
-      `The ${label} PDF failed strict parsing or may be encrypted. Restricted metadata revision was refused.`,
+      `The ${label} PDF parser reported an invalid or unsupported object, or the file may be encrypted. Restricted metadata revision was refused.`,
     );
   }
 }
@@ -218,7 +309,7 @@ function assertRestrictedMetadataPreflight(
   } catch (error) {
     if (error instanceof UnsafePdfFeatureError) throw error;
     throw new Error(
-      "The PDF failed strict parsing during structural preflight. Restricted metadata revision was refused.",
+      "Structural preflight encountered a parser-reported invalid, unresolved, or unsupported object. Restricted metadata revision was refused.",
     );
   }
 }
@@ -230,8 +321,11 @@ function performRestrictedMetadataPreflight(
   if (document.isEncrypted || document.context.trailerInfo.Encrypt) {
     throwUnsafe("encryption");
   }
-  if (document.getPageCount() < 1) {
-    throw new Error("Restricted metadata revision requires at least one valid page.");
+  const pageCount = document.getPageCount();
+  if (pageCount < 1 || pageCount > MAX_PAGES) {
+    throw new UnsafePdfFeatureError(
+      `Restricted metadata revision supports 1-${MAX_PAGES} pages; strict preflight found ${pageCount}.`,
+    );
   }
 
   const state = {
@@ -256,7 +350,10 @@ function performRestrictedMetadataPreflight(
   }
 }
 
-async function assertNoRestrictedPageOperators(bytes: Uint8Array) {
+async function assertNoRestrictedPageOperators(
+  bytes: Uint8Array,
+  operatorLimit: number,
+) {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const loadingTask = pdfjs.getDocument({
     data: bytes,
@@ -265,6 +362,11 @@ async function assertNoRestrictedPageOperators(bytes: Uint8Array) {
   });
   try {
     const document = await loadingTask.promise;
+    if (document.numPages < 1 || document.numPages > MAX_PAGES) {
+      throw new UnsafePdfFeatureError(
+        `Restricted metadata revision supports 1-${MAX_PAGES} pages; the page parser found ${document.numPages}.`,
+      );
+    }
     const restricted = new Set([
       pdfjs.OPS.beginInlineImage,
       pdfjs.OPS.beginImageData,
@@ -281,10 +383,17 @@ async function assertNoRestrictedPageOperators(bytes: Uint8Array) {
       pdfjs.OPS.paintImageMaskXObjectRepeat,
       pdfjs.OPS.paintSolidColorImageMask,
     ]);
+    let totalOperators = 0;
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       const page = await document.getPage(pageNumber);
       const operators = await page.getOperatorList();
       page.cleanup();
+      totalOperators += operators.fnArray.length;
+      if (totalOperators > operatorLimit) {
+        throw new UnsafePdfFeatureError(
+          `Restricted metadata revision supports at most ${operatorLimit.toLocaleString("en-US")} page operators for this run.`,
+        );
+      }
       if (operators.fnArray.some((operator) => restricted.has(operator))) {
         throwUnsafe("image or Form XObject page operators");
       }
@@ -408,7 +517,7 @@ function readName(
   const value = lookupEntry(dictionary, key, document, pdfLib);
   if (!value) return null;
   if (!(value instanceof pdfLib.PDFName)) {
-    throw new Error(`The /${key} entry was malformed or could not be safely interpreted.`);
+    throw new Error(`The parser could not interpret the /${key} entry as a PDF name.`);
   }
   return value.decodeText();
 }
@@ -437,20 +546,29 @@ function decodeStream(stream: PDFStream, pdfLib: PdfLibModule) {
   }
 }
 
-function protectedDocumentSnapshot(
+async function protectedDocumentSnapshot(
   document: PdfLibDocument,
   pdfLib: PdfLibModule,
+  allowances: { title: boolean; language: boolean },
 ) {
   const infoObject = document.context.lookup(document.context.trailerInfo.Info);
-  const objects = document.context.enumerateIndirectObjects()
-    .filter(([, object]) => object !== infoObject)
-    .map(([reference, object]) => [
+  const objects: Array<[string, unknown]> = [];
+  for (const [reference, object] of document.context.enumerateIndirectObjects()) {
+    if (object === infoObject) continue;
+    objects.push([
       reference.toString(),
       object === document.catalog
-        ? canonicalObject(object, pdfLib, new Set(["Lang"]))
-        : canonicalObject(object, pdfLib),
-    ])
-    .sort(([left], [right]) => String(left).localeCompare(String(right)));
+        ? await canonicalObject(
+            object,
+            pdfLib,
+            allowances.language ? new Set(["Lang"]) : new Set(),
+          )
+        : await canonicalObject(object, pdfLib),
+    ]);
+  }
+  objects.sort(([left], [right]) => left.localeCompare(right));
+  const infoExclusions = new Set(["ModDate"]);
+  if (allowances.title) infoExclusions.add("Title");
   return {
     header: document.context.header.toString(),
     trailer: {
@@ -459,7 +577,7 @@ function protectedDocumentSnapshot(
       encrypt: document.context.trailerInfo.Encrypt?.toString() ?? null,
     },
     info: infoObject instanceof pdfLib.PDFDict
-      ? canonicalObject(infoObject, pdfLib, new Set(["Title", "ModDate"]))
+      ? await canonicalObject(infoObject, pdfLib, infoExclusions)
       : [],
     pages: document.getPages().map((page) => ({
       reference: page.ref.toString(),
@@ -474,44 +592,41 @@ function protectedDocumentSnapshot(
   };
 }
 
-function canonicalObject(
+async function canonicalObject(
   object: PDFObject,
   pdfLib: PdfLibModule,
   excludedKeys = new Set<string>(),
   seen = new WeakSet<object>(),
-): unknown {
+): Promise<unknown> {
   if (object instanceof pdfLib.PDFRef) return object.toString();
   if (seen.has(object)) return "[direct-cycle]";
   seen.add(object);
   if (object instanceof pdfLib.PDFStream) {
     return {
-      dictionary: canonicalObject(object.dict, pdfLib, excludedKeys, seen),
-      contents: byteDigest(object.getContents()),
+      dictionary: await canonicalObject(object.dict, pdfLib, excludedKeys, seen),
+      contentsSha256: await fingerprintBytes(object.getContents()),
     };
   }
   if (object instanceof pdfLib.PDFDict) {
-    return object.entries()
-      .filter(([key]) => !excludedKeys.has(key.decodeText()))
-      .map(([key, value]) => [
+    const entries: Array<[string, unknown]> = [];
+    for (const [key, value] of object.entries()) {
+      if (excludedKeys.has(key.decodeText())) continue;
+      entries.push([
         key.decodeText(),
-        canonicalObject(value, pdfLib, new Set(), seen),
-      ])
-      .sort(([left], [right]) => String(left).localeCompare(String(right)));
+        await canonicalObject(value, pdfLib, new Set(), seen),
+      ]);
+    }
+    entries.sort(([left], [right]) => left.localeCompare(right));
+    return entries;
   }
   if (object instanceof pdfLib.PDFArray) {
-    return object.asArray().map((value) => canonicalObject(value, pdfLib, new Set(), seen));
+    const values: unknown[] = [];
+    for (const value of object.asArray()) {
+      values.push(await canonicalObject(value, pdfLib, new Set(), seen));
+    }
+    return values;
   }
   return object.toString();
-}
-
-function byteDigest(bytes: Uint8Array) {
-  let first = 2166136261;
-  let second = 0;
-  for (const byte of bytes) {
-    first = Math.imul(first ^ byte, 16777619) >>> 0;
-    second = (Math.imul(second, 33) + byte) >>> 0;
-  }
-  return `${bytes.byteLength}:${first.toString(16)}:${second.toString(16)}`;
 }
 
 function readCatalogText(

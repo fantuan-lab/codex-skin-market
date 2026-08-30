@@ -642,6 +642,7 @@ function protectedPageSignals(page: PdfAnalysis["pages"][number]) {
     textCharacters: page.textCharacters,
     textItems: page.textItems,
     imagePaintOperations: page.imagePaintOperations,
+    annotationCount: page.annotationCount,
     linkAnnotations: page.linkAnnotations,
     widgetAnnotations: page.widgetAnnotations,
     structureRoles: [...page.structureRoles].sort(),

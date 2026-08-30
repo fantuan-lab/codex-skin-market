@@ -9,7 +9,13 @@ import {
   StandardFonts,
   degrees,
 } from "pdf-lib";
-import { analyzePdf, fingerprintBytes, PdfAnalysisError } from "@/lib/pdf/analyze";
+import {
+  analyzePdf,
+  fingerprintBytes,
+  MAX_FILE_BYTES,
+  MAX_OPERATOR_COUNT,
+  PdfAnalysisError,
+} from "@/lib/pdf/analyze";
 import { createMetadataRevision } from "@/lib/pdf/remediate";
 import { buildEvidencePack, renderEvidenceHtml } from "@/lib/pdf/report";
 import { restrictedMetadataEligibility, runPdfProbe } from "@/lib/pdf/safety";
@@ -211,9 +217,15 @@ describe("fail-closed metadata revision safety", () => {
     for (const probe of Object.keys(safeInspection) as Array<keyof PdfSafetyInspection>) {
       const result = restrictedMetadataEligibility({
         textBased: true,
+        pdfVersion: "1.7",
+        tagged: false,
         encrypted: false,
+        hasAcroForm: false,
+        hasSignatures: false,
         hasXfa: false,
+        hasJavaScript: false,
         annotationCount: 0,
+        widgetCount: 0,
         imageCount: 0,
         linkCount: 0,
         tableCount: 0,
@@ -238,9 +250,15 @@ describe("fail-closed metadata revision safety", () => {
     for (const probe of restricted) {
       const result = restrictedMetadataEligibility({
         textBased: true,
+        pdfVersion: "1.7",
+        tagged: false,
         encrypted: false,
+        hasAcroForm: false,
+        hasSignatures: false,
         hasXfa: false,
+        hasJavaScript: false,
         annotationCount: 0,
+        widgetCount: 0,
         imageCount: 0,
         linkCount: 0,
         tableCount: 0,
@@ -248,6 +266,103 @@ describe("fail-closed metadata revision safety", () => {
       });
       expect(result.allowed, `${probe} present must be rejected`).toBe(false);
     }
+  });
+
+  it("retains a real probe failure and does not expose safeFix", async () => {
+    const bytes = await metadataFixablePdf();
+    const analysis = await analyzePdf(
+      bytes,
+      { fileName: "probe-failure.pdf", profileIds: ["wcag21"] },
+      {
+        runProbe: (async (label, read) =>
+          label === "signatures"
+            ? { state: "unknown", reason: "signatures inspection failed" }
+            : runPdfProbe(label, read)) as typeof runPdfProbe,
+      },
+    );
+
+    expect(analysis.metadata.safetyInspection.signatures).toBe("unknown");
+    expect(analysis.findings.find((finding) => finding.ruleId === "META-001")?.safeFix)
+      .toBeUndefined();
+  });
+
+  it("requires analyzer eligibility in addition to raw preflight", async () => {
+    const bytes = await metadataFixablePdf();
+    const analysis = await analyzePdf(bytes, {
+      fileName: "safe.pdf",
+      profileIds: ["wcag21"],
+    });
+    const inconclusive: PdfAnalysis = {
+      ...structuredClone(analysis),
+      metadata: {
+        ...analysis.metadata,
+        safetyInspection: {
+          ...analysis.metadata.safetyInspection,
+          signatures: "unknown",
+        },
+      },
+    };
+    await expect(
+      createMetadataRevision(bytes, inconclusive, { title: "Must not write" }),
+    ).rejects.toThrow(/inconclusive/);
+  });
+
+  it("enforces the writeback file-size budget before parsing", async () => {
+    const analysis = await analyzePdf(await metadataFixablePdf(), {
+      fileName: "safe.pdf",
+      profileIds: ["wcag21"],
+    });
+    await expect(
+      createMetadataRevision(new Uint8Array(MAX_FILE_BYTES + 1), analysis, {
+        title: "Must not write",
+      }),
+    ).rejects.toThrow(/50 MB/);
+  });
+
+  it("rejects 101 pages from real bytes even when analysis is forged", async () => {
+    const safeBytes = await metadataFixablePdf();
+    const safeAnalysis = await analyzePdf(safeBytes, {
+      fileName: "safe.pdf",
+      profileIds: ["wcag21"],
+    });
+    const document = await PDFDocument.create({ updateMetadata: false });
+    for (let index = 0; index < 101; index += 1) document.addPage([100, 100]);
+    const bytes = await document.save({ useObjectStreams: false });
+    const forged = lieAboutSafety({
+      ...safeAnalysis,
+      fingerprint: await fingerprintBytes(bytes),
+    });
+    await expect(
+      createMetadataRevision(bytes, forged, { title: "Must not write" }),
+    ).rejects.toThrow(/1-100 pages/);
+  });
+
+  it("enforces the independent page-operator budget", async () => {
+    const safeBytes = await metadataFixablePdf();
+    const safeAnalysis = await analyzePdf(safeBytes, {
+      fileName: "safe.pdf",
+      profileIds: ["wcag21"],
+    });
+    const document = await PDFDocument.load(safeBytes, { updateMetadata: false });
+    expect(MAX_OPERATOR_COUNT).toBe(1_000_000);
+    const testOperatorLimit = 1_000;
+    const operatorBytes = new TextEncoder().encode("q\n".repeat(testOperatorLimit + 1));
+    document.getPage(0).node.addContentStream(
+      document.context.register(document.context.stream(operatorBytes)),
+    );
+    const bytes = await document.save({ useObjectStreams: false });
+    const forged = lieAboutSafety({
+      ...safeAnalysis,
+      fingerprint: await fingerprintBytes(bytes),
+    });
+    await expect(
+      createMetadataRevision(
+        bytes,
+        forged,
+        { title: "Must not write" },
+        { operatorLimit: testOperatorLimit },
+      ),
+    ).rejects.toThrow(/1,000 page operators/);
   });
 
   it.each([
@@ -389,7 +504,7 @@ describe("fail-closed metadata revision safety", () => {
     const forged = { ...safeAnalysis, fingerprint: await fingerprintBytes(malformed) };
     await expect(
       createMetadataRevision(malformed, forged, { title: "Must not write" }),
-    ).rejects.toThrow(/strict parsing/);
+    ).rejects.toThrow(/parser-reported invalid, unresolved, or unsupported/);
   });
 
   it("rejects an encryption trailer before attempting a rewrite", async () => {
@@ -458,6 +573,58 @@ describe("fail-closed metadata revision safety", () => {
       throwOnInvalidObject: true,
     });
     expect(output.getTitle()).toBe("Added Title");
+  });
+
+  it("does not offer or perform restricted revision for PDF 1.4", async () => {
+    const original = await metadataFixablePdf();
+    const bytes = replacePdfHeaderVersion(original, "1.4");
+    const analysis = await analyzePdf(bytes, {
+      fileName: "legacy-1.4.pdf",
+      profileIds: ["wcag21"],
+    });
+    expect(analysis.metadata.pdfVersion).toBe("1.4");
+    expect(analysis.findings.find((finding) => finding.ruleId === "META-001")?.safeFix)
+      .toBeUndefined();
+
+    const forged = lieAboutSafety({
+      ...analysis,
+      metadata: { ...analysis.metadata, pdfVersion: "1.7" },
+    });
+    await expect(
+      createMetadataRevision(bytes, forged, { title: "Must not write" }),
+    ).rejects.toThrow(/PDF 1\.7 only.*PDF 1\.4/);
+  });
+
+  it("protects Lang during a title-only revision", async () => {
+    const bytes = await configurableTextPdf((document) => {
+      document.setLanguage("fr-FR");
+    });
+    const analysis = await analyzePdf(bytes, {
+      fileName: "title-only.pdf",
+      profileIds: ["wcag21"],
+    });
+    const revision = await createMetadataRevision(bytes, analysis, {
+      title: "Titre protégé",
+    });
+    const output = await PDFDocument.load(revision.bytes, { updateMetadata: false });
+    expect(output.getTitle()).toBe("Titre protégé");
+    expect(readPdfNameOrString(output, "Lang")).toBe("fr-FR");
+  });
+
+  it("protects Title during a language-only revision", async () => {
+    const bytes = await configurableTextPdf((document) => {
+      document.setTitle("Original protected title");
+    });
+    const analysis = await analyzePdf(bytes, {
+      fileName: "language-only.pdf",
+      profileIds: ["wcag21"],
+    });
+    const revision = await createMetadataRevision(bytes, analysis, {
+      language: "de-DE",
+    });
+    const output = await PDFDocument.load(revision.bytes, { updateMetadata: false });
+    expect(output.getTitle()).toBe("Original protected title");
+    expect(readPdfNameOrString(output, "Lang")).toBe("de-DE");
   });
 
   it("revises title and language without mutating the source or protected page state", async () => {
@@ -612,6 +779,17 @@ function readPdfNameOrString(document: PDFDocument, key: string) {
     | { decodeText?: () => string }
     | undefined;
   return value?.decodeText?.();
+}
+
+function replacePdfHeaderVersion(bytes: Uint8Array, version: string) {
+  const copy = bytes.slice();
+  const header = new TextDecoder("latin1").decode(copy.slice(0, 16));
+  const match = header.match(/%PDF-(\d\.\d)/);
+  if (!match || match.index === undefined || version.length !== match[1].length) {
+    throw new Error("Test fixture did not have a replaceable PDF header version.");
+  }
+  copy.set(new TextEncoder().encode(version), match.index + "%PDF-".length);
+  return copy;
 }
 
 function ruleIds(result: Awaited<ReturnType<typeof analyzePdf>>) {

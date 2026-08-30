@@ -2,6 +2,7 @@ import { referencesFor } from "./standards";
 import {
   featureProbeState,
   mergeFeatureProbeState,
+  readPdfHeaderVersion,
   restrictedMetadataEligibility,
   runPdfProbe,
 } from "./safety";
@@ -25,6 +26,12 @@ export const MAX_TEXT_ITEMS = 250_000;
 export const MAX_OPERATOR_COUNT = 1_000_000;
 
 type PdfJsModule = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+
+export interface PdfAnalyzerDependencies {
+  runProbe: typeof runPdfProbe;
+}
+
+const DEFAULT_ANALYZER_DEPENDENCIES: PdfAnalyzerDependencies = { runProbe: runPdfProbe };
 
 interface TextItemSignal {
   str: string;
@@ -84,9 +91,10 @@ export class PdfAnalysisError extends Error {
 export async function analyzePdf(
   input: ArrayBuffer | Uint8Array,
   options: AnalyzeOptions,
+  dependencies: PdfAnalyzerDependencies = DEFAULT_ANALYZER_DEPENDENCIES,
 ): Promise<PdfAnalysis> {
   const bytes = input instanceof Uint8Array ? input.slice() : new Uint8Array(input.slice(0));
-  validateInput(bytes);
+  const pdfVersion = validateInput(bytes);
   assertNotCancelled(options.signal);
 
   const fingerprintPromise = fingerprintBytes(bytes);
@@ -135,11 +143,11 @@ export async function analyzePdf(
   try {
     const [metadataProbe, markInfoProbe, fieldObjectsProbe, signaturesProbe, javaScriptProbe] =
       await Promise.all([
-        runPdfProbe("metadata", () => document.getMetadata()),
-        runPdfProbe("MarkInfo", () => document.getMarkInfo()),
-        runPdfProbe("field objects", () => document.getFieldObjects()),
-        runPdfProbe("signatures", () => document.getSignatures()),
-        runPdfProbe("JavaScript actions", () => document.getJSActions()),
+        dependencies.runProbe("metadata", () => document.getMetadata()),
+        dependencies.runProbe("MarkInfo", () => document.getMarkInfo()),
+        dependencies.runProbe("field objects", () => document.getFieldObjects()),
+        dependencies.runProbe("signatures", () => document.getSignatures()),
+        dependencies.runProbe("JavaScript actions", () => document.getJSActions()),
       ]);
 
     const metadataResult = metadataProbe.state === "known"
@@ -166,7 +174,6 @@ export async function analyzePdf(
     let language =
       cleanMetadataValue(info.Language) ??
       cleanMetadataValue(xmpMetadata?.get("dc:language"));
-    const pdfVersion = cleanMetadataValue(info.PDFFormatVersion ?? null);
     const profileIds = normalizeProfiles(options.profileIds);
     const analyzedAt = new Date().toISOString();
     const findings: Finding[] = [];
@@ -220,7 +227,10 @@ export async function analyzePdf(
       const [textContent, annotations, structTreeProbe, operatorList] = await Promise.all([
         page.getTextContent({ includeMarkedContent: true }),
         page.getAnnotations({ intent: "display" }),
-        runPdfProbe(`page ${pageNumber} structure tree`, () => page.getStructTree()),
+        dependencies.runProbe(
+          `page ${pageNumber} structure tree`,
+          () => page.getStructTree(),
+        ),
         page.getOperatorList(),
       ]);
       const structTree = structTreeProbe.state === "known" ? structTreeProbe.value : null;
@@ -611,9 +621,15 @@ export async function analyzePdf(
     };
     const allowsMetadataWriteback = restrictedMetadataEligibility({
       textBased,
+      pdfVersion,
+      tagged,
       encrypted,
+      hasAcroForm,
+      hasSignatures,
       hasXfa,
+      hasJavaScript,
       annotationCount: totalAnnotations,
+      widgetCount: totalWidgets,
       imageCount: totalImages,
       linkCount: totalLinks,
       tableCount: totalTables,
@@ -1002,6 +1018,7 @@ export async function analyzePdf(
       ],
       limits: [
         "Text-based PDFs from 1 to 100 pages; image-only pages receive an OCR risk signal, not OCR.",
+        "Restricted metadata revision is offered only for PDF 1.7 files whose analyzer safety probes are conclusive and whose exposed signals remain inside the simple-document boundary.",
         "No PDF body text, form values, or full link targets are sent to a server or persisted. Selected metadata, aggregate signals, and reviewer notes remain in this tab unless the reviewer downloads an evidence pack.",
         "Complex tag trees, formulas, complex tables, XFA, scripts, signatures, and interactive-form behavior require specialist review.",
         "A finding-free automated check is recorded as no machine-detectable issue found, never as compliance passed.",
@@ -1032,10 +1049,11 @@ function validateInput(bytes: Uint8Array) {
       "file-too-large",
     );
   }
-  const header = new TextDecoder("latin1").decode(bytes.slice(0, 1024));
-  if (!header.includes("%PDF-")) {
+  const version = readPdfHeaderVersion(bytes);
+  if (!version) {
     throw new PdfAnalysisError("The selected file does not contain a PDF header.", "not-pdf");
   }
+  return version;
 }
 
 async function loadPdfJs(): Promise<PdfJsModule> {
