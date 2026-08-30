@@ -61,6 +61,63 @@ test("landing page is meaningful, keyboard reachable, responsive, and axe-clean"
   await page.screenshot({ path: "test-results/cleartag-mobile.png", fullPage: true });
 });
 
+test("Chinese route, language switching, workspace state, and localized evidence stay accessible", async ({
+  page,
+}) => {
+  const errors = collectRuntimeErrors(page);
+  await page.goto("/zh", { waitUntil: "networkidle" });
+
+  await expect(page).toHaveURL(/\/zh$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: /把无障碍问题转化为可复核的修复和可追溯的证据/,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "语言" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "中文", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expectNoAxeViolations(page);
+
+  await page.getByRole("button", { name: "含已知问题的样例" }).click();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "known-accessibility-issues.pdf" }),
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("机器检测到的问题", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /缺少文档标题元数据/ })).toBeVisible();
+
+  await page.getByRole("link", { name: "English", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(
+    page.getByRole("heading", { level: 2, name: "known-accessibility-issues.pdf" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /Document title metadata is missing/ })).toBeVisible();
+
+  await page.getByRole("link", { name: "中文", exact: true }).click();
+  await expect(page).toHaveURL(/\/zh$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  await expect(page.getByRole("button", { name: /缺少文档标题元数据/ })).toBeVisible();
+
+  const evidenceDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "下载证据包" }).click();
+  const evidence = await readEvidenceArchive(await evidenceDownloadPromise);
+  expect(evidence.html).toContain('<html lang="zh-CN">');
+  expect(evidence.html).toContain("本报告不是符合性证书");
+  expect(evidence.json).toMatchObject({
+    reportLocale: "zh",
+    fileName: "known-accessibility-issues.pdf",
+    certificateOfConformance: false,
+  });
+  expect(evidence.readme).toContain("不是符合性证书");
+
+  await expectNoAxeViolations(page);
+  expect(errors).toEqual([]);
+});
+
 test("real PDF analysis, human status, safe writeback, and evidence download work", async ({
   page,
 }) => {
@@ -77,11 +134,11 @@ test("real PDF analysis, human status, safe writeback, and evidence download wor
 
   await page.getByRole("combobox", { name: "Status", exact: true }).selectOption("open");
   await page.getByRole("button", { name: /No usable tagged structure was exposed/ }).click();
-  await page.getByLabel("Reviewer rationale").fill(
+  await page.getByRole("textbox", { name: /Reviewer rationale/ }).fill(
     "Structure tree absence confirmed against the page structure signal; specialist remediation required.",
   );
   await page.getByRole("button", { name: "Escalate to specialist" }).click();
-  await expect(page.getByText("Status recorded: Escalated.")).toBeVisible();
+  await expect(page.getByText("Status recorded: Escalated to specialist.")).toBeVisible();
   await expect(page.locator("#finding-detail-title")).toBeFocused();
 
   const reviewEvidencePromise = page.waitForEvent("download");
@@ -111,7 +168,11 @@ test("real PDF analysis, human status, safe writeback, and evidence download wor
     timeout: 30_000,
   });
   await expect(page.getByRole("heading", { name: "2 file versions" })).toBeVisible();
-  await expect(page.getByText("Resolved and rechecked").first()).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: /Document title metadata is missing.*Resolved and rechecked/,
+    }),
+  ).toBeVisible();
 
   const evidenceDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download evidence pack" }).click();
@@ -170,5 +231,10 @@ async function readEvidenceArchive(download: Download) {
   return {
     files: Object.keys(archive.files).sort(),
     html: await archive.file("remediation-evidence.html")!.async("string"),
+    json: JSON.parse(await archive.file("evidence.json")!.async("string")) as Record<
+      string,
+      unknown
+    >,
+    readme: await archive.file("README.txt")!.async("string"),
   };
 }

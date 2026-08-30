@@ -169,20 +169,46 @@ describe("real PDF fixture analysis", () => {
       fileName: "known-accessibility-issues.pdf",
       profileIds: [...profiles],
     });
-    const html = renderEvidenceHtml(result);
-    const pack = await buildEvidencePack(result);
+    const englishHtml = renderEvidenceHtml(result);
+    const chineseHtml = renderEvidenceHtml(result, "zh");
+    const chinesePack = await buildEvidencePack(result, "zh");
     const archive = await import("jszip").then(({ default: JSZip }) =>
-      JSZip.loadAsync(pack.blob.arrayBuffer()),
+      JSZip.loadAsync(chinesePack.blob.arrayBuffer()),
     );
+    const machineRecord = JSON.parse(
+      await archive.file("evidence.json")!.async("string"),
+    ) as {
+      reportLocale: string;
+      fileName: string;
+      certificateOfConformance: boolean;
+      findings: Array<{ ruleId: string; title: string }>;
+    };
+    const readme = await archive.file("README.txt")!.async("string");
 
-    expect(html).toContain('<html lang="en">');
-    expect(html).toContain("Not a certificate of conformance");
-    expect(html).toContain('<th scope="col">');
-    expect(html).toContain("WCAG 2.0");
-    expect(html).not.toMatch(/>Passed</i);
+    expect(englishHtml).toContain('<html lang="en">');
+    expect(englishHtml).toContain("Not a certificate of conformance");
+    expect(englishHtml).toContain('<th scope="col">');
+    expect(englishHtml).toContain("WCAG 2.0");
+    expect(englishHtml).not.toMatch(/>Passed</i);
+
+    expect(chineseHtml).toContain('<html lang="zh-CN">');
+    expect(chineseHtml).toContain("本报告不是符合性证书");
+    expect(chineseHtml).toContain("缺少文档标题元数据");
+    expect(chineseHtml).toContain("Section 508");
+    expect(chineseHtml).not.toMatch(/>Passed</i);
     expect(Object.keys(archive.files)).toEqual(
       expect.arrayContaining(["remediation-evidence.html", "evidence.json", "README.txt"]),
     );
+    expect(machineRecord).toMatchObject({
+      reportLocale: "zh",
+      fileName: "known-accessibility-issues.pdf",
+      certificateOfConformance: false,
+    });
+    expect(machineRecord.findings.find(({ ruleId }) => ruleId === "META-001")?.title).toBe(
+      "缺少文档标题元数据",
+    );
+    expect(readme).toContain("不是符合性证书");
+    expect(readme).toContain("known-accessibility-issues.pdf");
   });
 });
 
