@@ -15,7 +15,8 @@ type PendingCookie = {
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`;
-  const isProtected = isProtectedPath(request.nextUrl.pathname);
+  const isBilling = isBillingPagePath(request.nextUrl.pathname);
+  const isProtected = isProtectedPath(request.nextUrl.pathname) || isBilling;
   const isLogin = isLoginPath(request.nextUrl.pathname);
   if (!isProtected && !isLogin) {
     return NextResponse.next({ request });
@@ -64,7 +65,12 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const response = authenticated || isLogin
     ? NextResponse.next({ request })
     : NextResponse.redirect(
-        new URL(loginPathFor(returnTo), request.url),
+        new URL(
+          isBilling
+            ? billingLoginPathFor(returnTo, request.nextUrl.pathname)
+            : loginPathFor(returnTo),
+          request.url,
+        ),
         { status: 303 },
       );
 
@@ -73,15 +79,39 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ["/login", "/zh/login", "/workspace/:path*", "/zh/workspace/:path*"],
+  matcher: [
+    "/login",
+    "/zh/login",
+    "/workspace/:path*",
+    "/zh/workspace/:path*",
+    "/billing/:path*",
+    "/zh/billing/:path*",
+  ],
 };
+
+function isBillingPagePath(pathname: string): boolean {
+  return (
+    pathname === "/billing" ||
+    pathname.startsWith("/billing/") ||
+    pathname === "/zh/billing" ||
+    pathname.startsWith("/zh/billing/")
+  );
+}
+
+function billingLoginPathFor(returnTo: string, pathname: string): string {
+  const loginPath = pathname.startsWith("/zh/") ? "/zh/login" : "/login";
+  return `${loginPath}?returnTo=${encodeURIComponent(returnTo)}`;
+}
 
 function protectedLoginRedirect(
   request: NextRequest,
   returnTo: string,
 ): NextResponse {
+  const loginPath = isBillingPagePath(request.nextUrl.pathname)
+    ? billingLoginPathFor(returnTo, request.nextUrl.pathname)
+    : loginPathFor(returnTo);
   return applyPrivateNoStore(
-    NextResponse.redirect(new URL(loginPathFor(returnTo), request.url), {
+    NextResponse.redirect(new URL(loginPath, request.url), {
       status: 303,
     }),
   );
