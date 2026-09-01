@@ -3,7 +3,12 @@ const LOCAL_ORIGIN = "https://cleartag.local";
 
 const PUBLIC_PATHS = new Set(["/", "/zh", "/login", "/zh/login"]);
 const RESERVED_AUTH_PATHS = ["/auth", "/login", "/zh/login"];
-const PROTECTED_ROOTS = ["/workspace", "/zh/workspace"];
+const PROTECTED_ROOTS = [
+  "/workspace",
+  "/zh/workspace",
+  "/billing",
+  "/zh/billing",
+];
 const LOGIN_PATHS = new Set(["/login", "/zh/login"]);
 
 export function isProtectedPath(pathname: string): boolean {

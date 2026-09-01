@@ -1,7 +1,6 @@
 "use client";
 
 import { Eye, EyeSlash, GoogleLogo, LockKey } from "@phosphor-icons/react";
-import { useRouter } from "next/navigation";
 import {
   type FormEvent,
   useId,
@@ -29,7 +28,6 @@ export function AuthForm({
   next?: string;
 }>) {
   const copy = getUiCopy(locale).auth;
-  const router = useRouter();
   const emailId = useId();
   const passwordId = useId();
   const passwordHintId = useId();
@@ -91,8 +89,7 @@ export function AuthForm({
         if (signInError) throw signInError;
 
         setStatus(copy.redirecting);
-        router.replace(safeNext);
-        router.refresh();
+        window.location.assign(safeNext);
         return;
       }
 
@@ -105,8 +102,7 @@ export function AuthForm({
 
       if (data.session) {
         setStatus(copy.redirecting);
-        router.replace(safeNext);
-        router.refresh();
+        window.location.assign(safeNext);
       } else {
         setStatus(copy.signUpNotice);
         setPassword("");

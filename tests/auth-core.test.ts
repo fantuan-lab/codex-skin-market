@@ -118,6 +118,8 @@ describe("authentication path policy", () => {
     ["/workspace/reports", true],
     ["/zh/workspace", true],
     ["/zh/workspace/reports", true],
+    ["/billing", true],
+    ["/zh/billing", true],
     ["/", false],
     ["/login", false],
     ["/workspace-other", false],
@@ -138,6 +140,8 @@ describe("authentication path policy", () => {
     ["/workspace", "/workspace"],
     ["/workspace?tab=evidence#finding-1", "/workspace?tab=evidence#finding-1"],
     ["/zh/workspace/reports?id=one", "/zh/workspace/reports?id=one"],
+    ["/billing", "/billing"],
+    ["/zh/billing?billing=success", "/zh/billing?billing=success"],
     [undefined, "/workspace"],
     [null, "/workspace"],
   ])("allows the strict relative return path %s", (candidate, expected) => {
@@ -165,6 +169,8 @@ describe("authentication path policy", () => {
       "/zh/workspace?view=review",
       "/zh/login?returnTo=%2Fzh%2Fworkspace%3Fview%3Dreview",
     ],
+    ["/billing", "/login?returnTo=%2Fbilling"],
+    ["/zh/billing", "/zh/login?returnTo=%2Fzh%2Fbilling"],
     ["https://attacker.example", "/login?returnTo=%2Fworkspace"],
   ])("builds a locale-safe login path for %s", (returnTo, expected) => {
     expect(loginPathFor(returnTo)).toBe(expected);

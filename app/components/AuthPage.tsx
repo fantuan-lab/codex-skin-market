@@ -39,21 +39,34 @@ function normalizeCallbackError(value: string | undefined): CallbackErrorCode | 
   }
 }
 
-function localizedWorkspacePath(next: string, targetLocale: Locale): string {
-  const sourceRoot = targetLocale === "zh" ? "/workspace" : "/zh/workspace";
-  const targetRoot = targetLocale === "zh" ? "/zh/workspace" : "/workspace";
-  const alreadyLocalizedRoot = targetRoot;
+function localizedProtectedPath(next: string, targetLocale: Locale): string {
+  const defaultRoot = targetLocale === "zh" ? "/zh/workspace" : "/workspace";
+  const rootPairs =
+    targetLocale === "zh"
+      ? [
+          ["/workspace", "/zh/workspace"],
+          ["/billing", "/zh/billing"],
+        ]
+      : [
+          ["/zh/workspace", "/workspace"],
+          ["/zh/billing", "/billing"],
+        ];
 
-  if (matchesWorkspaceRoot(next, sourceRoot)) {
-    return safeReturnPath(`${targetRoot}${next.slice(sourceRoot.length)}`, targetRoot);
+  for (const [sourceRoot, targetRoot] of rootPairs) {
+    if (matchesProtectedRoot(next, sourceRoot)) {
+      return safeReturnPath(
+        `${targetRoot}${next.slice(sourceRoot.length)}`,
+        defaultRoot,
+      );
+    }
+    if (matchesProtectedRoot(next, targetRoot)) {
+      return safeReturnPath(next, defaultRoot);
+    }
   }
-  if (matchesWorkspaceRoot(next, alreadyLocalizedRoot)) {
-    return safeReturnPath(next, targetRoot);
-  }
-  return targetRoot;
+  return defaultRoot;
 }
 
-function matchesWorkspaceRoot(value: string, root: string): boolean {
+function matchesProtectedRoot(value: string, root: string): boolean {
   return (
     value === root ||
     value.startsWith(`${root}/`) ||
@@ -91,8 +104,8 @@ export function AuthPage({
   );
   const callbackError = normalizeCallbackError(error);
   const initialError = callbackErrorMessage(copy.auth, callbackError);
-  const englishNext = localizedWorkspacePath(safeNext, "en");
-  const chineseNext = localizedWorkspacePath(safeNext, "zh");
+  const englishNext = localizedProtectedPath(safeNext, "en");
+  const chineseNext = localizedProtectedPath(safeNext, "zh");
 
   return (
     <div className="auth-page-shell">

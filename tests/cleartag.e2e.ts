@@ -344,6 +344,18 @@ test("email login is generic on failure, persists on refresh, and signs out clea
   expect(errors).toEqual([]);
 });
 
+test("protected billing returns to billing after email sign-in", async ({ page }) => {
+  await page.goto("/billing", { waitUntil: "networkidle" });
+  await expect(page).toHaveURL(/\/login\?returnTo=%2Fbilling$/);
+
+  await page.getByLabel("Work email").fill(TEST_EMAIL);
+  await page.getByRole("textbox", { name: "Password", exact: true }).fill(TEST_PASSWORD);
+  await page.getByRole("button", { name: "Sign in with email", exact: true }).click();
+
+  await expect(page).toHaveURL(/\/billing$/, { timeout: 30_000 });
+  await expect(page.getByRole("heading", { level: 1, name: "Your ClearTag plan" })).toBeVisible();
+});
+
 test("Google PKCE completes authorize, callback, exchange, cookie, and workspace", async ({
   page,
 }) => {
