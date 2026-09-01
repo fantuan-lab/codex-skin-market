@@ -61,7 +61,7 @@ test("server-renders the English ClearTag landing page without exposing the work
   assert.match(html, /EN 301 549/);
   assert.match(html, /No server-side PDF retention/);
   assert.match(html, /\$19\/month/);
-  assert.match(html, /14-day trial/);
+  assert.match(html, /Eligible new subscribers can start with a 14-day trial/);
   assert.match(html, /See the issue\. Record the judgment\. Deliver the evidence\./);
   assert.match(html, /src="\/landing\/standards-books\.png"/i);
   assert.match(html, /src="\/landing\/cta-desk\.png"/i);

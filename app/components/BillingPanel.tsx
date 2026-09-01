@@ -40,6 +40,13 @@ export function BillingPanel({
       : currentSummary.planKey === "monthly"
         ? copy.monthlyPrice
         : null;
+  const renewalCopy = currentSummary.trialEligible
+    ? planKey === "annual"
+      ? copy.annualRenewal
+      : copy.monthlyRenewal
+    : planKey === "annual"
+      ? copy.annualImmediateRenewal
+      : copy.monthlyImmediateRenewal;
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -202,7 +209,7 @@ export function BillingPanel({
             {currentSummary.trialEligible ? copy.trial : copy.noTrial}
           </p>
           <p className="billing-purchase-boundary">
-            {planKey === "annual" ? copy.annualRenewal : copy.monthlyRenewal} {copy.softwareOnly}
+            {renewalCopy} {copy.softwareOnly}
           </p>
           <button
             className="billing-submit"
