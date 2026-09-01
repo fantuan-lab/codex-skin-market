@@ -40,6 +40,32 @@ In Supabase Auth configuration:
 
 Supabase stores limited account, identity, session, and authentication-security data. PDF bytes, extracted PDF text, findings, and reviewer notes remain in the current browser tab unless the reviewer explicitly downloads an evidence pack.
 
+## Stripe billing setup
+
+ClearTag Reviewer Pro is software access only: USD $19 per month or USD $190 per year, with a 14-day trial for an eligible account started through Stripe Checkout. A payment method is required, and the selected plan renews until canceled. The subscription unlocks evidence-pack export and the restricted metadata revision workflow. It does not include human remediation, a conformance audit, legal advice, or a compliance certificate.
+
+Set these server-side variables in `.env.local` for development and in the deployment environment for hosted builds:
+
+```dotenv
+STRIPE_SECRET_KEY=rk_test_REPLACE_ME
+STRIPE_WEBHOOK_SECRET=whsec_REPLACE_ME
+STRIPE_MONTHLY_PRICE_ID=price_REPLACE_ME
+STRIPE_ANNUAL_PRICE_ID=price_REPLACE_ME
+STRIPE_EXPECT_LIVE_MODE=false
+```
+
+`STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` must never use a `NEXT_PUBLIC_` prefix or enter browser code. Prefer a Stripe restricted key (`rk_test_…` / `rk_live_…`) with only Prices read, Customers read/write, Subscriptions read, Checkout Sessions read/write, and Billing Portal Sessions write; standard secret keys remain accepted for development. Use test keys with test-mode Price IDs and `STRIPE_EXPECT_LIVE_MODE=false`; use live keys with live-mode Price IDs and `STRIPE_EXPECT_LIVE_MODE=true`. Never mix modes. The application treats the two configured Price IDs as a server-side allowlist and validates their USD amount, recurring interval, billing scheme, and Stripe mode before creating Checkout or granting access. If billing configuration or Stripe is unavailable, entitlement checks fail closed and the UI disables Checkout while local analysis remains available.
+
+Create one Stripe product with separate monthly and annual recurring Prices, then configure the Stripe Customer Portal to let subscribers review billing and cancel. ClearTag reads the current Stripe subscription state; Pro access is limited to an allowed Price whose subscription is `trialing` or `active`, including an active subscription scheduled to cancel at the period end. A non-terminal existing subscription blocks a second Checkout, a matching open Checkout Session is reused, and conflicting open ClearTag Sessions are expired before a replacement is created. Stripe's server-side idempotency record is the final concurrency boundary; a cached uncertain Stripe failure can deliberately block retry rather than risk a duplicate charge and may require operator inspection or waiting for Stripe's idempotency retention window. A prior Stripe trial on an allowed ClearTag Price removes the trial from later Checkouts.
+
+The MVP resolves an existing Customer by an exact current-email list plus a `cleartag_user_id` metadata fallback and refuses ambiguous matches. Stripe Customer Search is not a strongly consistent database. Before production scale or email-migration workflows, persist a unique Supabase user-to-Stripe-Customer mapping in a private server-owned table and use Search only for controlled migration/backfill.
+
+Register `/api/stripe/webhook` as the webhook endpoint and use that endpoint's signing secret for `STRIPE_WEBHOOK_SECRET`. The webhook must remain publicly reachable because Stripe cannot hold a ClearTag login session; every event is still rejected unless its bounded raw body has a valid Stripe signature and the expected test/live mode.
+
+Stripe receives the account email, an internal ClearTag user identifier, and the billing details collected in Stripe-hosted Checkout or the Customer Portal. ClearTag does not send PDF bytes, extracted text, findings, reviewer notes, or evidence-pack contents to Stripe. PDF analysis remains local to the browser.
+
+Because export and restricted revision execute locally, the Pro gate is a normal product/licensing control, not tamper-proof DRM: a user who modifies a self-hosted or downloaded client bundle can bypass browser UI checks. Advanced modules are loaded only after a verified Pro state in the normal UI, but no claim of cryptographic client enforcement is made. Production collection also requires published subscription terms, cancellation/refund policy, and privacy notices linked from Stripe and the site; those legal pages are outside this MVP branch.
+
 Run the complete local gate with:
 
 ```bash
