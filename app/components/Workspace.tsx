@@ -8,6 +8,7 @@ import {
   FilePdf,
   Flag,
   Info,
+  LockKey,
   ShieldWarning,
   X,
 } from "@phosphor-icons/react";
@@ -36,8 +37,6 @@ import {
   type Locale,
 } from "@/lib/i18n";
 import { analyzePdf } from "@/lib/pdf/analyze";
-import { createMetadataRevision } from "@/lib/pdf/remediate";
-import { buildEvidencePack } from "@/lib/pdf/report";
 import type {
   Finding,
   FindingCategory,
@@ -50,6 +49,7 @@ interface Props {
   locale: Locale;
   initialAnalysis: PdfAnalysis;
   initialBytes: Uint8Array;
+  hasProAccess?: boolean;
   onReset: () => void;
 }
 
@@ -59,9 +59,12 @@ export function AnalysisWorkspace({
   locale,
   initialAnalysis,
   initialBytes,
+  hasProAccess = false,
   onReset,
 }: Props) {
   const copy = getUiCopy(locale).workspace;
+  const billingCopy = getUiCopy(locale).billing;
+  const upgradeHref = locale === "zh" ? "/zh/billing" : "/billing";
   const [analysis, setAnalysis] = useState(initialAnalysis);
   const [currentBytes, setCurrentBytes] = useState(initialBytes);
   const [selectedId, setSelectedId] = useState(initialAnalysis.findings[0]?.id ?? "");
@@ -147,11 +150,16 @@ export function AnalysisWorkspace({
   };
 
   const applySafeFix = async () => {
+    if (!hasProAccess) {
+      setError(billingCopy.proGateCopy);
+      return;
+    }
     if (!selected?.safeFix || !fixValue.trim()) return;
     setBusyMessage(copy.busy.revision);
     setError(null);
     setMessage(null);
     try {
+      const { createMetadataRevision } = await import("@/lib/pdf/remediate");
       const fixes =
         selected.safeFix === "document-title"
           ? { title: fixValue.trim() }
@@ -191,9 +199,14 @@ export function AnalysisWorkspace({
   };
 
   const downloadReport = async () => {
+    if (!hasProAccess) {
+      setError(billingCopy.proGateCopy);
+      return;
+    }
     setBusyMessage(copy.busy.report);
     setError(null);
     try {
+      const { buildEvidencePack } = await import("@/lib/pdf/report");
       const pack = await buildEvidencePack(analysis, locale);
       downloadBlob(pack.blob, pack.fileName);
       setMessage(copy.messages.reportDownloaded);
@@ -248,13 +261,28 @@ export function AnalysisWorkspace({
           <button
             type="button"
             className="primary-button"
-            disabled={isBusy}
+            disabled={isBusy || !hasProAccess}
             onClick={() => void downloadReport()}
           >
-            <DownloadSimple aria-hidden="true" /> {copy.downloadPack}
+            {hasProAccess ? <DownloadSimple aria-hidden="true" /> : <LockKey aria-hidden="true" />} {copy.downloadPack}
           </button>
         </div>
       </div>
+
+      {!hasProAccess ? (
+        <div className="pro-feature-gate" role="status">
+          <LockKey weight="duotone" aria-hidden="true" />
+          <div>
+            <strong>{billingCopy.proGateTitle}</strong>
+            <span>
+              {billingCopy.proGateCopy} {billingCopy.preserveReview}
+            </span>
+          </div>
+          <a href={upgradeHref} target="_blank" rel="noopener">
+            {billingCopy.upgrade}
+          </a>
+        </div>
+      ) : null}
 
       {!analysis.textBased ? (
         <div className="workspace-alert" role="status">
@@ -462,10 +490,10 @@ export function AnalysisWorkspace({
                   <button
                     type="button"
                     className="primary-button"
-                    disabled={!fixValue.trim() || isBusy}
+                    disabled={!fixValue.trim() || isBusy || !hasProAccess}
                     onClick={() => void applySafeFix()}
                   >
-                    <FilePdf aria-hidden="true" /> {copy.createAndRecheck}
+                    {hasProAccess ? <FilePdf aria-hidden="true" /> : <LockKey aria-hidden="true" />} {copy.createAndRecheck}
                   </button>
                 </section>
               ) : null}

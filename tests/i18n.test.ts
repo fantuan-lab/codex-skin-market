@@ -87,6 +87,27 @@ describe("bilingual UI copy", () => {
     expect(chinese.auth.configurationMissing).toContain("尚未配置");
     expect(chinese.account.signOut).toBe("退出登录");
 
+    expect(english.pricing.cards[0]).toMatchObject({
+      title: "Local review",
+      price: "$0",
+    });
+    expect(english.pricing.cards[1]).toMatchObject({
+      title: "Reviewer Pro",
+      price: "$19/month",
+    });
+    expect(english.pricing.cards[1].copy).toContain("14-day trial");
+    expect(english.pricing.cards[2].title).toBe("Organization");
+    expect(chinese.pricing.cards[1].price).toBe("$19/月");
+    expect(chinese.pricing.cards[1].copy).toContain("14 天免费试用");
+    expect(english.billing.monthlyPrice).toBe("$19/month");
+    expect(english.billing.annualPrice).toBe("$190/year");
+    expect(english.billing.privacy).toContain("never sent to Stripe");
+    expect(english.billing.status.unavailable).toBe("Billing unavailable");
+    expect(english.billing.activeAccess).toContain("access is active");
+    expect(chinese.billing.monthlyPrice).toBe("$19/月");
+    expect(chinese.billing.annualPrice).toBe("$190/年");
+    expect(chinese.billing.proGateCopy).toContain("免费版仍可本地分析");
+
     expect(getStandardProfileCopy("section508", "zh")).toMatchObject({
       shortName: "Section 508",
       name: expect.stringContaining("Section 508"),

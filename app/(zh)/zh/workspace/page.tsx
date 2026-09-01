@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AuthenticatedWorkspace } from "@/app/components/AuthenticatedWorkspace";
 import { requireAuthenticatedUser } from "@/lib/auth/server";
+import { getBillingSummary } from "@/lib/billing/server";
 import { getUiCopy } from "@/lib/i18n";
 
 const copy = getUiCopy("zh");
@@ -13,5 +14,12 @@ export const metadata: Metadata = {
 
 export default async function ChineseWorkspacePage() {
   const user = await requireAuthenticatedUser("/zh/workspace");
-  return <AuthenticatedWorkspace locale="zh" userEmail={user.email} />;
+  const billing = await getBillingSummary(user);
+  return (
+    <AuthenticatedWorkspace
+      locale="zh"
+      userEmail={user.email}
+      billing={billing}
+    />
+  );
 }

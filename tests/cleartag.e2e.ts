@@ -9,6 +9,15 @@ const TEST_EMAIL = "reviewer@example.com";
 const TEST_PASSWORD = "Correct-Horse-42!";
 const AUTH_STUB_ORIGIN = "http://127.0.0.1:43173";
 const AUTH_COOKIE_NAME = "sb-127-auth-token";
+const PRO_BILLING_SUMMARY = {
+  plan: "pro",
+  status: "active",
+  currentPeriodEnd: "2026-10-01T00:00:00.000Z",
+  cancelAtPeriodEnd: false,
+  hasProAccess: true,
+  planKey: "monthly",
+  trialEligible: false,
+};
 
 type TestAuthSession = {
   access_token: string;
@@ -85,6 +94,19 @@ async function signInWithEmail(page: Page, locale: "en" | "zh" = "en") {
     timeout: 30_000,
   });
   await expect(page.getByText(TEST_EMAIL, { exact: true })).toBeVisible();
+}
+
+async function unlockReviewerPro(page: Page) {
+  await page.route("**/api/billing/summary", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: { "cache-control": "private, no-store" },
+      body: JSON.stringify(PRO_BILLING_SUMMARY),
+    });
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.locator(".workspace-billing-notice")).toBeVisible();
 }
 
 async function tabUntilFocused(page: Page, locator: ReturnType<Page["locator"]>) {
@@ -196,6 +218,8 @@ test("landing page is meaningful, login-gated, responsive, and axe-clean", async
     "/workspace",
   );
   await expect(page.locator(".analyzer-section")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Reviewer Pro" })).toBeVisible();
+  await expect(page.getByText("$19/month", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Choose or drop a PDF")).toHaveCount(0);
   const landingOrder = await page.evaluate(() =>
     [
@@ -536,8 +560,64 @@ test("Chinese route, language switching boundary, and localized evidence stay ac
     }),
   ).toBeVisible();
 
+  const evidenceButton = page.getByRole("button", { name: "下载证据包" });
+  await expect(evidenceButton).toBeDisabled();
+  await expect(page.getByText(/账单会在新标签页打开/)).toBeVisible();
+  const billingPagePromise = page.context().waitForEvent("page");
+  await page.getByRole("link", { name: "升级至 Reviewer Pro" }).click();
+  const billingPage = await billingPagePromise;
+  await billingPage.waitForLoadState("networkidle");
+  await expect(billingPage).toHaveURL(/\/zh\/billing$/);
+  await expect(
+    billingPage.getByRole("heading", { level: 2, name: "账单不可用" }),
+  ).toBeVisible();
+  await expect(
+    billingPage.getByRole("navigation", { name: "账单语言" }),
+  ).toBeVisible();
+  await expectNoAxeViolations(billingPage);
+  await billingPage.goto("/zh/billing?billing=cancelled", {
+    waitUntil: "networkidle",
+  });
+  await expect(billingPage.getByText("结账已取消，订阅没有发生变化。")).toBeVisible();
+  await billingPage.route("**/api/billing/summary", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(PRO_BILLING_SUMMARY),
+    });
+  });
+  await billingPage.goto("/zh/billing?billing=success", {
+    waitUntil: "networkidle",
+  });
+  await expect(
+    billingPage.getByText(/Reviewer Pro 已生效.*返回原来的 ClearTag 标签页/),
+  ).toBeVisible();
+  await billingPage.screenshot({
+    path: "test-results/cleartag-billing-zh.png",
+    fullPage: true,
+  });
+  await billingPage.setViewportSize({ width: 390, height: 844 });
+  const billingWidths = await billingPage.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    client: document.documentElement.clientWidth,
+  }));
+  expect(billingWidths.scroll).toBeLessThanOrEqual(billingWidths.client + 1);
+  await expectNoAxeViolations(billingPage);
+  await billingPage.screenshot({
+    path: "test-results/cleartag-billing-zh-mobile.png",
+    fullPage: true,
+  });
+  await billingPage.close();
+  await page.bringToFront();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "known-accessibility-issues.pdf" }),
+  ).toBeVisible();
+
+  await unlockReviewerPro(page);
+  await expect(evidenceButton).toBeEnabled();
+
   const evidenceDownloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "下载证据包" }).click();
+  await evidenceButton.click();
   const evidence = await readEvidenceArchive(await evidenceDownloadPromise);
   expect(evidence.html).toContain('<html lang="zh-CN">');
   expect(evidence.html).toContain("本报告不是符合性证书");
@@ -595,6 +675,7 @@ test("Chinese restricted revision fails closed on a hidden raw-byte risk", async
   const sourceFingerprint = await page.locator(".workspace-meta code").textContent();
   await page.getByRole("button", { name: /缺少文档标题元数据/ }).click();
   await page.getByLabel("准确的文档标题").fill("不得写回的标题");
+  await unlockReviewerPro(page);
   let downloadCount = 0;
   page.on("download", () => {
     downloadCount += 1;
@@ -635,6 +716,11 @@ test("real PDF analysis, human status, safe writeback, and evidence download wor
   await page.getByRole("button", { name: "Escalate to specialist" }).click();
   await expect(page.getByText("Status recorded: Escalated to specialist.")).toBeVisible();
   await expect(page.locator("#finding-detail-title")).toBeFocused();
+
+  await expect(
+    page.getByRole("button", { name: "Download evidence pack" }),
+  ).toBeDisabled();
+  await unlockReviewerPro(page);
 
   const reviewEvidencePromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download evidence pack" }).click();

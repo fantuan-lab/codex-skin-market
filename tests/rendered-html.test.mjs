@@ -60,7 +60,8 @@ test("server-renders the English ClearTag landing page without exposing the work
   assert.match(html, /PDF\/UA-1/);
   assert.match(html, /EN 301 549/);
   assert.match(html, /No server-side PDF retention/);
-  assert.match(html, /Not yet offered/);
+  assert.match(html, /\$19\/month/);
+  assert.match(html, /14-day trial/);
   assert.match(html, /See the issue\. Record the judgment\. Deliver the evidence\./);
   assert.match(html, /src="\/landing\/standards-books\.png"/i);
   assert.match(html, /src="\/landing\/cta-desk\.png"/i);
@@ -96,6 +97,7 @@ test("server-renders a complete Chinese route with the correct document language
   assert.match(html, /PDF\/UA-1/);
   assert.match(html, /EN 301 549/);
   assert.match(html, /此版本不在服务器端留存 PDF/);
+  assert.match(html, /\$19\/月/);
   assert.match(html, /不承诺一键合规/);
   assert.match(html, /看见问题，记录判断，交付证据/);
   assert.match(html, /src="\/landing\/standards-books\.png"/i);

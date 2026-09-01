@@ -10,20 +10,24 @@ import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { getUiCopy, type Locale } from "@/lib/i18n";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { type BillingSummary } from "./BillingPanel";
 
 export function WorkspaceShell({
   children,
   locale,
   userEmail,
+  billing,
 }: Readonly<{
   children: ReactNode;
   locale: Locale;
   userEmail: string;
+  billing: BillingSummary;
 }>) {
   const copy = getUiCopy(locale);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const homeHref = locale === "zh" ? "/zh" : "/";
+  const billingHref = locale === "zh" ? "/zh/billing" : "/billing";
 
   const handleSignOut = async () => {
     if (isSigningOut) return;
@@ -66,6 +70,23 @@ export function WorkspaceShell({
             <span>{copy.account.signedInAs}</span>
             <strong>{userEmail}</strong>
           </div>
+          <Link
+            className="workspace-billing-link"
+            href={billingHref}
+            target="_blank"
+            rel="noopener"
+            aria-label={`${copy.billing.manageShort}. ${copy.billing.preserveReview}`}
+          >
+            <span>{copy.billing.workspacePlan}</span>
+            <strong>
+              {billing.status === "unavailable"
+                ? copy.billing.status.unavailable
+                : billing.plan === "pro"
+                  ? copy.billing.pro
+                  : copy.billing.free}
+            </strong>
+            <small>{copy.billing.manageShort}</small>
+          </Link>
           <nav className="auth-language-switcher" aria-label={copy.locale.switchLabel}>
             <Link
               href="/workspace"

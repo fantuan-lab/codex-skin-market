@@ -29,7 +29,13 @@ import { AnalysisWorkspace } from "./Workspace";
 
 const DEFAULT_PROFILES: StandardProfileId[] = ["wcag21", "section508"];
 
-export function PdfExperience({ locale }: Readonly<{ locale: Locale }>) {
+export function PdfExperience({
+  locale,
+  hasProAccess = false,
+}: Readonly<{
+  locale: Locale;
+  hasProAccess?: boolean;
+}>) {
   const copy = getUiCopy(locale);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -314,6 +320,7 @@ export function PdfExperience({ locale }: Readonly<{ locale: Locale }>) {
           locale={locale}
           initialAnalysis={analysis}
           initialBytes={sourceBytes}
+          hasProAccess={hasProAccess}
           onReset={reset}
         />
       ) : null}

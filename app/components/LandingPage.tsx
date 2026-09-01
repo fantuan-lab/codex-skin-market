@@ -33,6 +33,7 @@ const standardLinks = [
 export function LandingPage({ locale }: Readonly<{ locale: Locale }>) {
   const copy = getUiCopy(locale);
   const workspaceHref = locale === "zh" ? "/zh/workspace" : "/workspace";
+  const billingHref = locale === "zh" ? "/zh/billing" : "/billing";
 
   return (
     <AppShell locale={locale}>
@@ -266,8 +267,8 @@ export function LandingPage({ locale }: Readonly<{ locale: Locale }>) {
               <h3>{card.title}</h3>
               <strong>{card.price}</strong>
               <p>{card.copy}</p>
-              {index === 0 ? (
-                <Link href={workspaceHref}>{card.action}</Link>
+              {index < 2 ? (
+                <Link href={index === 0 ? workspaceHref : billingHref}>{card.action}</Link>
               ) : (
                 <span className="disabled-link">{card.action}</span>
               )}
